@@ -1,28 +1,22 @@
-﻿using Dapper;
-using EmployeeApi.Data;
+using Dapper;
 using EmployeeApi.ViewModel.Department;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using System.Data;
 using DepartmentEntity = EmployeeApi.Model.Department.Department;
 namespace EmployeeApi.Service.Department
 {
     public class DepartmentService : IDepartmentService
     {
-        private readonly ApplicationDbContext _context;
-
         private readonly string _connstring;
 
-        public DepartmentService(ApplicationDbContext context, IConfiguration configuration)
+        public DepartmentService(IConfiguration configuration)
         {
-            _context = context;
             _connstring = configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
         }
 
         public async Task<List<DepartmentEntity>> GetAll()
         {
-            //return await _context.Departments.ToListAsync();
             using var connection = new SqlConnection(_connstring);
             var department=await connection.QueryAsync<DepartmentEntity>(
                 "[dbo].[GetAllDepartments]",
@@ -34,8 +28,6 @@ namespace EmployeeApi.Service.Department
 
         public async Task<DepartmentEntity?> GetById(int id)
         {
-            //return await _context.Departments.FindAsync(id);
-
             using var connection = new SqlConnection(_connstring);
             var department = await connection.QueryFirstOrDefaultAsync<DepartmentEntity>(
                 "[dbo].[GetDepartmentById]",

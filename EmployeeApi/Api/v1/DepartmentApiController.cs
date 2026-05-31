@@ -1,4 +1,4 @@
-﻿using EmployeeApi.Service.Department;
+using EmployeeApi.Service.Department;
 using EmployeeApi.ViewModel.Department;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -75,15 +75,15 @@ namespace EmployeeApi.Api.v1
                 Description = model.Description
             };
 
-            return Ok(
-                await _service.Update(department));
+            var updatedDepartment = await _service.Update(department);
+            return SuccessResponse("Department updated successfully", updatedDepartment);
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             return await _service.Delete(id)
-                ? NotFoundResponse("Department deleted successfully")
+                ? SuccessResponse("Department deleted successfully")
                 : NotFoundResponse("Department not found");
         }
 
