@@ -101,5 +101,44 @@ namespace EmployeeApi.Service.Department
                 commandType: CommandType.StoredProcedure
             );
         }
+
+
+        public async Task<List<DepartmentWithEmployeesViewModel>> GetDepartmentsWithEmployees()
+        {
+            using var connection = new SqlConnection(_connstring);
+
+            var rows = await connection.QueryAsync<DepartmentEmployeeFlatViewModel>(
+                "[dbo].[GetDepartmentsWithEmployees]",
+                commandType: CommandType.StoredProcedure
+            );
+
+            var departments = rows
+                .GroupBy(row => new
+                {
+                    row.DepartmentId,
+                    row.DepartmentName,
+                    row.Description
+                })
+                .Select(group => new DepartmentWithEmployeesViewModel
+                {
+                    DepartmentId = group.Key.DepartmentId,
+                    DepartmentName = group.Key.DepartmentName,
+                    Description = group.Key.Description,
+                    Employees = group
+                        .Where(row => row.EmployeeId.HasValue)
+                        .Select(row => new DepartmentEmployeeViewModel
+                        {
+                            EmployeeId = row.EmployeeId!.Value,
+                            EmployeeName = row.EmployeeName ?? string.Empty,
+                            Email = row.Email ?? string.Empty,
+                            Role = row.Role ?? string.Empty,
+                            Status = row.Status ?? string.Empty
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            return departments;
+        }
     }
 }

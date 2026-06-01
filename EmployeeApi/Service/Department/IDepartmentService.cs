@@ -13,7 +13,7 @@ namespace EmployeeApi.Service.Department
 
         Task<DepartmentEntity> Update(DepartmentEntity department);
         Task<IEnumerable<DepartmentDropdownViewModel>> GetDropdown(string query);
-
+        Task<List<DepartmentWithEmployeesViewModel>> GetDepartmentsWithEmployees();
         Task<bool> Delete(int id);
     }
 }

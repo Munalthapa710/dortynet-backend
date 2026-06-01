@@ -93,5 +93,13 @@ namespace EmployeeApi.Api.v1
             var departments = await _service.GetDropdown(query);
             return SuccessResponse("Department dropdown loaded successfully.", departments);
         }
+
+
+        [HttpGet("with-employees")]
+        public async Task<IActionResult> GetDepartmentsWithEmployees()
+        {
+            var departments = await _service.GetDepartmentsWithEmployees();
+            return SuccessResponse("Department employee list fetched successfully.", departments);
+        }
     }
 }
