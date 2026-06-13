@@ -66,7 +66,6 @@ public class AssignTaskService : IAssignTaskService
 
         return createdTask ?? throw new KeyNotFoundException($"Employee {assignedTask.EmployeeId} was not found.");
     }
-
     public async Task<AssignedTaskEntity> Update(AssignedTaskEntity assignedTask)
     {
         using var connection = new SqlConnection(_connString);
