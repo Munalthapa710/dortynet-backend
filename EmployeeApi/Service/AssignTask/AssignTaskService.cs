@@ -1,80 +1,101 @@
-using EmployeeApi.Data;
-using Microsoft.EntityFrameworkCore;
+using Dapper;
+using Microsoft.Data.SqlClient;
+using System.Data;
 using AssignedTaskEntity = EmployeeApi.Model.AssignTask.AssignedTask;
 
 namespace EmployeeApi.Service.AssignTask;
 
 public class AssignTaskService : IAssignTaskService
 {
-    private readonly ApplicationDbContext _context;
-    
+    private readonly string _connString;
 
-    public AssignTaskService(ApplicationDbContext context)
+    public AssignTaskService(IConfiguration configuration)
     {
-        _context = context;
+        _connString = configuration.GetConnectionString("DefaultConnection") ??
+            throw new InvalidOperationException("Connection string not found.");
     }
 
     public async Task<List<AssignedTaskEntity>> GetAll()
     {
-        return await _context.AssignedTasks
-            .OrderByDescending(task => task.AssignedOn)
-            .ToListAsync();
+        using var connection = new SqlConnection(_connString);
+        var assignedTasks = await connection.QueryAsync<AssignedTaskEntity>(
+            "[dbo].[GetAllAssignedTasks]",
+            commandType: CommandType.StoredProcedure
+        );
+
+        return assignedTasks.ToList();
     }
 
     public async Task<List<AssignedTaskEntity>> GetByEmployeeId(int employeeId)
     {
-        return await _context.AssignedTasks
-            .Where(task => task.EmployeeId == employeeId)
-            .OrderByDescending(task => task.AssignedOn)
-            .ToListAsync();
+        using var connection = new SqlConnection(_connString);
+        var assignedTasks = await connection.QueryAsync<AssignedTaskEntity>(
+            "[dbo].[GetAssignedTasksByEmployeeId]",
+            new { EmployeeId = employeeId },
+            commandType: CommandType.StoredProcedure
+        );
+
+        return assignedTasks.ToList();
     }
 
     public async Task<AssignedTaskEntity?> GetById(int id)
     {
-        return await _context.AssignedTasks.FindAsync(id);
+        using var connection = new SqlConnection(_connString);
+        return await connection.QueryFirstOrDefaultAsync<AssignedTaskEntity>(
+            "[dbo].[GetAssignedTaskById]",
+            new { Id = id },
+            commandType: CommandType.StoredProcedure
+        );
     }
 
     public async Task<AssignedTaskEntity> Create(AssignedTaskEntity assignedTask)
     {
-        await EnsureEmployeeExists(assignedTask.EmployeeId);
+        using var connection = new SqlConnection(_connString);
+        var createdTask = await connection.QueryFirstOrDefaultAsync<AssignedTaskEntity>(
+            "[dbo].[CreateAssignedTask]",
+            new
+            {
+                assignedTask.EmployeeId,
+                assignedTask.Title,
+                assignedTask.Description,
+                assignedTask.DueDate,
+                assignedTask.Status
+            },
+            commandType: CommandType.StoredProcedure
+        );
 
-        _context.AssignedTasks.Add(assignedTask);
-        await _context.SaveChangesAsync();
-        return assignedTask;
+        return createdTask ?? throw new KeyNotFoundException($"Employee {assignedTask.EmployeeId} was not found.");
     }
 
     public async Task<AssignedTaskEntity> Update(AssignedTaskEntity assignedTask)
     {
-        await EnsureEmployeeExists(assignedTask.EmployeeId);
+        using var connection = new SqlConnection(_connString);
+        var updatedTask = await connection.QueryFirstOrDefaultAsync<AssignedTaskEntity>(
+            "[dbo].[UpdateAssignedTask]",
+            new
+            {
+                assignedTask.Id,
+                assignedTask.EmployeeId,
+                assignedTask.Title,
+                assignedTask.Description,
+                assignedTask.DueDate,
+                assignedTask.Status
+            },
+            commandType: CommandType.StoredProcedure
+        );
 
-        var existingTask = await _context.AssignedTasks.FindAsync(assignedTask.Id)
-            ?? throw new KeyNotFoundException($"Assigned task {assignedTask.Id} was not found.");
-
-        assignedTask.AssignedOn = existingTask.AssignedOn;
-        _context.Entry(existingTask).CurrentValues.SetValues(assignedTask);
-        await _context.SaveChangesAsync();
-        return existingTask;
+        return updatedTask ?? throw new KeyNotFoundException($"Assigned task {assignedTask.Id} was not found.");
     }
 
     public async Task<bool> Delete(int id)
     {
-        var assignedTask = await _context.AssignedTasks.FindAsync(id);
+        using var connection = new SqlConnection(_connString);
+        var affectedRows = await connection.ExecuteScalarAsync<int>(
+            "[dbo].[DeleteAssignedTask]",
+            new { Id = id },
+            commandType: CommandType.StoredProcedure
+        );
 
-        if (assignedTask is null)
-        {
-            return false;
-        }
-
-        _context.AssignedTasks.Remove(assignedTask);
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
-    private async Task EnsureEmployeeExists(int employeeId)
-    {
-        if (!await _context.Employees.AnyAsync(employee => employee.Id == employeeId))
-        {
-            throw new KeyNotFoundException($"Employee {employeeId} was not found.");
-        }
+        return affectedRows > 0;
     }
 }
