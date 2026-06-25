@@ -1,0 +1,99 @@
+@EmployeeApi_HostAddress = http://localhost:5256
+@Username = admin
+@Password = admin123
+
+POST {{EmployeeApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{Username}}",
+  "password": "{{Password}}"
+}
+
+###
+
+GET {{EmployeeApi_HostAddress}}/api/employee
+Accept: application/json
+Authorization: Bearer {{Token}}
+
+###
+
+GET {{EmployeeApi_HostAddress}}/api/employee/1
+Accept: application/json
+Authorization: Bearer {{Token}}
+
+###
+
+POST {{EmployeeApi_HostAddress}}/api/employee
+Content-Type: application/json
+Authorization: Bearer {{Token}}
+
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "salary": 50000
+}
+
+###
+
+PUT {{EmployeeApi_HostAddress}}/api/employee/1
+Content-Type: application/json
+Authorization: Bearer {{Token}}
+
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "salary": 55000
+}
+
+###
+
+DELETE {{EmployeeApi_HostAddress}}/api/employee/1
+Authorization: Bearer {{Token}}
+
+###
+
+GET {{EmployeeApi_HostAddress}}/api/assign-task
+Accept: application/json
+Authorization: Bearer {{Token}}
+
+###
+
+GET {{EmployeeApi_HostAddress}}/api/assign-task/employee/1
+Accept: application/json
+Authorization: Bearer {{Token}}
+
+###
+
+POST {{EmployeeApi_HostAddress}}/api/assign-task
+Content-Type: application/json
+Authorization: Bearer {{Token}}
+
+{
+  "employeeId": 1,
+  "title": "Prepare monthly report",
+  "description": "Prepare and submit the monthly employee report.",
+  "dueDate": "2026-06-30T17:00:00Z",
+  "status": "Pending"
+}
+
+###
+
+PUT {{EmployeeApi_HostAddress}}/api/assign-task/1
+Content-Type: application/json
+Authorization: Bearer {{Token}}
+
+{
+  "employeeId": 1,
+  "title": "Prepare monthly report",
+  "description": "Prepare and submit the updated monthly employee report.",
+  "dueDate": "2026-06-30T17:00:00Z",
+  "status": "In Progress"
+}
+
+###
+
+DELETE {{EmployeeApi_HostAddress}}/api/assign-task/1
+Authorization: Bearer {{Token}}
+
+###

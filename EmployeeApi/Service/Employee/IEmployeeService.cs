@@ -1,0 +1,19 @@
+//what must be the using statement for this code file ?
+
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;  // This line creates an alias for the Employee class in the EmployeeApi.Model.Employee namespace, allowing it to be referenced as EmployeeEntity within this file.
+
+namespace EmployeeApi.Service.Employee // This code defines the IEmployeeService interface, which declares methods for managing employee data in an asynchronous manner. The interface includes methods for retrieving all employees, retrieving an employee by ID, creating a new employee, updating an existing employee, and deleting an employee by ID. Each method returns a Task, indicating that the operations are asynchronous and will eventually return the specified result.
+{
+    public interface IEmployeeService
+    {
+        Task<List<EmployeeEntity>> GetAll(); //task mean asynchronous operation that will eventually return a List of EmployeeEntity objects.
+
+        Task<EmployeeEntity?> GetById(int id);
+
+        Task<EmployeeEntity> Create(EmployeeEntity employee); // EmployeeEntity employee is a parameter that represents the employee object to be created. The method will return the created EmployeeEntity object.
+
+        Task<EmployeeEntity> Update(EmployeeEntity employee);
+
+        Task<bool> Delete(int id);
+    }
+}

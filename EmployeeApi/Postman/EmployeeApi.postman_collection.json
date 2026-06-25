@@ -1,0 +1,351 @@
+{
+  "info": {
+    "_postman_id": "d94f4b96-9f75-4869-b69d-1b791ff958ec",
+    "name": "EmployeeApi",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{bearerToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl = pm.environment.get('baseUrl');",
+          "const username = pm.environment.get('username');",
+          "const password = pm.environment.get('password');",
+          "const expiresAt = pm.environment.get('tokenExpiresAt');",
+          "const currentToken = pm.environment.get('bearerToken');",
+          "const shouldRefresh = !currentToken || !expiresAt || Date.now() > Date.parse(expiresAt) - 60000;",
+          "",
+          "if (!pm.request.url.toString().includes('/api/auth/login') && shouldRefresh) {",
+          "    pm.sendRequest({",
+          "        url: `${baseUrl}/api/auth/login`,",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({ username, password })",
+          "        }",
+          "    }, (error, response) => {",
+          "        if (error) {",
+          "            throw new Error(`Token request failed: ${error.message}`);",
+          "        }",
+          "",
+          "        if (!response || response.code >= 400) {",
+          "            throw new Error(`Token request failed with status ${response && response.code}: ${response && response.text()}`);",
+          "        }",
+          "",
+          "        const body = response.json();",
+          "        pm.environment.set('bearerToken', body.token);",
+          "        pm.environment.set('tokenExpiresAt', body.expiresAt);",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeded', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('bearerToken', body.token);",
+                  "pm.environment.set('tokenExpiresAt', body.expiresAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Get Employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Employee By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"salary\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"salary\": 55000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employee/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Employee",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Assign Tasks",
+      "item": [
+        {
+          "name": "Get Assigned Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Assigned Task By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Tasks By Employee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task/employee/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task",
+                "employee",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Assigned Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1,\n  \"title\": \"Prepare monthly report\",\n  \"description\": \"Prepare and submit the monthly employee report.\",\n  \"dueDate\": \"2026-06-30T17:00:00Z\",\n  \"status\": \"Pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Assigned Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1,\n  \"title\": \"Prepare monthly report\",\n  \"description\": \"Prepare and submit the updated monthly employee report.\",\n  \"dueDate\": \"2026-06-30T17:00:00Z\",\n  \"status\": \"In Progress\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Assigned Task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assign-task/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assign-task",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
