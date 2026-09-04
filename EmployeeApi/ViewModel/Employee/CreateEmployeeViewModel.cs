@@ -15,8 +15,14 @@ public class CreateEmployeeViewModel
     [StringLength(255)]
     public string Email { get; set; } = string.Empty;
 
+    [StringLength(10)]
+    [Phone]
+    public string? PhoneNumber { get; set; }
+
     [Range(0, double.MaxValue)]
     public decimal Salary { get; set; }
+
+    public int? ClientId { get; set; }
 
     public int DepartmentId { get; set; }
 

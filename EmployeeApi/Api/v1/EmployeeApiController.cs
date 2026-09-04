@@ -37,8 +37,10 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
             {
                 Name = model.Name,
                 Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
                 Salary = model.Salary,
-                 DepartmentId = model.DepartmentId
+                ClientId = model.ClientId,
+                DepartmentId = model.DepartmentId
             };
 
             var createdEmployee = await _service.Create(employee);  //call service and Employee gets inserted into database.
@@ -58,7 +60,9 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
                 Id = id,
                 Name = model.Name,
                 Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
                 Salary = model.Salary,
+                ClientId = model.ClientId,
                 DepartmentId = model.DepartmentId
             };
 

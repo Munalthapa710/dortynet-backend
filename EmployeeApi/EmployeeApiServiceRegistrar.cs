@@ -1,4 +1,5 @@
 using EmployeeApi.Service.AssignTask;
+using EmployeeApi.Service.Client;
 using EmployeeApi.Service.Department;
 using EmployeeApi.Service.Employee;
 
@@ -12,6 +13,7 @@ public static class EmployeeApiServiceRegistrar
         services.AddScoped<IAssignTaskService, AssignTaskService>();
 
         services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<IClientService, ClientService>();
 
         return services;
     }

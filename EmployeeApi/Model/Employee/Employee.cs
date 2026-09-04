@@ -10,9 +10,15 @@ namespace EmployeeApi.Model.Employee
 
         public string Email { get; set; } = string.Empty;
 
+        public string PhoneNumber { get; set; } = string.Empty; 
+
         public decimal Salary { get; set; }
 
         public int DepartmentId { get; set; }
+
+        public int? ClientId { get; set; }
+
+        public EmployeeApi.Model.Client.Client? Client { get; set; }
 
         public EmployeeApi.Model.Department.Department? Department { get; set; }  //inherit gareko 
     }

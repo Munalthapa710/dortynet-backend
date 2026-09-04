@@ -10,7 +10,7 @@ namespace EmployeeApi.Service.Employee
     {
         private readonly ApplicationDbContext _context; //declare a private readonly field to hold the database context for accessing the employee table
 
-        public EmployeeService(ApplicationDbContext context) //constructor that takes an ApplicationDbContext parameter and initializes the _context field with it
+        public EmployeeService(ApplicationDbContext context) //constructor that takes an ApplicationDbContext parameter and initializes the _context field with it (constructor dependency injection)
         {
             _context = context; //give to context the database context to access the database and perform operations on the employee table
         }

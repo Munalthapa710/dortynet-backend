@@ -1,4 +1,5 @@
 using EmployeeApi.Model.AssignTask;
+using EmployeeApi.Model.Client;
 using EmployeeApi.Model.Department;
 using EmployeeApi.Model.Employee;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,8 @@ namespace EmployeeApi.Data
         public DbSet<AssignedTask> AssignedTasks { get; set; } = null!;
 
         public DbSet<Department> Departments { get; set; } = null!;
+
+        public DbSet<Client> Clients { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
