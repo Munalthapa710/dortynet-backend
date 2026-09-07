@@ -16,6 +16,6 @@ namespace EmployeeApi.Service.Employee // This code defines the IEmployeeService
 
         Task<bool> Delete(int id);
 
-        Task<EmployeeEntity> GetByEmail(string email); // This method retrieves an employee by their email address. It returns a Task that will eventually return an EmployeeEntity object if found, or null if not found.
+        Task<EmployeeEntity?> GetByEmail(string email); // This method retrieves an employee by their email address. It returns a Task that will eventually return an EmployeeEntity object if found, or null if not found.
     }
 }

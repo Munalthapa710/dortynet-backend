@@ -2,6 +2,7 @@ using EmployeeApi.Service.AssignTask;
 using EmployeeApi.Service.Client;
 using EmployeeApi.Service.Department;
 using EmployeeApi.Service.Employee;
+using EmployeeApi.Service.Notifications;
 
 namespace EmployeeApi;
 
@@ -14,6 +15,7 @@ public static class EmployeeApiServiceRegistrar
 
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IEmployeeEmailSender, SmtpEmployeeEmailSender>();
 
         return services;
     }

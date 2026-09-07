@@ -1,6 +1,7 @@
 //he part that receives HTTP requests from Postman, React, Angular, mobile apps
 using Microsoft.AspNetCore.Identity;
 using EmployeeApi.Service.Employee; // taking service to use it in the controller to perform operations on employee data
+using EmployeeApi.Service.Notifications;
 using EmployeeApi.ViewModel.Employee; // taking viewmodel to use it in the controller to receive data from the client when creating or updating an employee, and to validate the data before processing it in the service layer
 using Microsoft.AspNetCore.Mvc; // Imports ASP.NET Core MVC features. ControllerBase ApiController Route HttpGet HttpPostOk() NotFound()
 using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
@@ -12,10 +13,12 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
     public class EmployeeApiController : ControllerBase // ok NotFound badrequest Nocontent This class is a controller that handles HTTP requests related to employee operations. It inherits from ControllerBase, which provides basic functionality for handling HTTP requests and responses. The controller uses the IEmployeeService to perform operations on employee data and the CreateEmployeeViewModel and UpdateEmployeeViewModel to receive and validate data from the client when creating or updating an employee.
     {
         private readonly IEmployeeService _service; // declare a private readonly field to hold the instance of the IEmployeeService, which will be used to perform operations on employee data
+        private readonly IEmployeeEmailSender _employeeEmailSender;
 
-        public EmployeeApiController(IEmployeeService service) // constructor that takes an IEmployeeService parameter and initializes the _service field with it, allowing the controller to use the service to perform operations on employee data
+        public EmployeeApiController(IEmployeeService service, IEmployeeEmailSender employeeEmailSender) // constructor that takes an IEmployeeService parameter and initializes the _service field with it, allowing the controller to use the service to perform operations on employee data
         {
             _service = service; // initialize the _service field with the instance of the IEmployeeService provided through dependency injection, allowing the controller to use the service to perform operations on employee data
+            _employeeEmailSender = employeeEmailSender;
         }
 
         [HttpGet] // This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
@@ -53,6 +56,8 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
             employee.Role = model.Role; //assign the role from the model to the employee entity. The Role property of the employee entity is set to the value of the Role property from the CreateEmployeeViewModel, which allows the client to specify the role of the new employee when creating it.
 
             var createdEmployee = await _service.Create(employee);  //call service and Employee gets inserted into database.
+            await _employeeEmailSender.SendAccountCreatedAsync(createdEmployee, model.Password);
+
             return CreatedAtAction(nameof(GetById), new { id = createdEmployee.Id }, createdEmployee); //201 Created
         }
         
