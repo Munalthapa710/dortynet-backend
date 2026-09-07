@@ -26,4 +26,9 @@ public class CreateEmployeeViewModel
 
     public int DepartmentId { get; set; }
 
+    [Required]
+    public string Password { get; set; } = string.Empty;
+    [Required]
+    public string Role { get; set; } = "Employee";
+
 }

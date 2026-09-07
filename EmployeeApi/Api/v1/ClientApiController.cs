@@ -1,13 +1,15 @@
 ﻿using EmployeeApi.Service.Client;
 using EmployeeApi.ViewModel.Client;
-using ClientEntity= EmployeeApi.Model.Client.Client;
-
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ClientEntity= EmployeeApi.Model.Client.Client;
 
 namespace EmployeeApi.Api.v1
 {
     [ApiController]
+   
     [Route("api/client")]
+    [Authorize(Roles = "Manager,Employee")]
     public class ClientApiController : ControllerBase
     {
        private readonly IClientService _service;

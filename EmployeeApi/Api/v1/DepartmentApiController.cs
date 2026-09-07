@@ -1,11 +1,13 @@
 ﻿using EmployeeApi.Service.Department;
 using EmployeeApi.ViewModel.Department;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DepartmentEntity = EmployeeApi.Model.Department.Department;
 
 namespace EmployeeApi.Api.v1
 {
     [ApiController]
+    [Authorize(Roles = "Manager,Employee")]
     [Route("api/department")]
     public class DepartmentApiController : ControllerBase
     {

@@ -1,5 +1,6 @@
 using EmployeeApi.Service.AssignTask;
 using EmployeeApi.ViewModel.AssignTask;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AssignedTaskEntity = EmployeeApi.Model.AssignTask.AssignedTask;
 
@@ -7,6 +8,7 @@ namespace EmployeeApi.Api.v1;
 
 [ApiController]
 [Route("api/assign-task")] // base url for all endpoints in this controller, so all endpoints will start with api/assign-task
+[Authorize(Roles = "Manager")]
 public class AssignTaskApiController : ControllerBase
 {
     private readonly IAssignTaskService _service;

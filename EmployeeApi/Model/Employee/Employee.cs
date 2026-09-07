@@ -1,4 +1,5 @@
 //database ko model yaha 
+using System.Text.Json.Serialization;
 
 namespace EmployeeApi.Model.Employee
 {
@@ -17,8 +18,13 @@ namespace EmployeeApi.Model.Employee
         public int DepartmentId { get; set; }
 
         public int? ClientId { get; set; }
+        
 
+        [JsonIgnore]
+        public string PasswordHash { get; set; } = string.Empty;
+        public string Role { get; set; } = "Employee";
         public EmployeeApi.Model.Client.Client? Client { get; set; }
+
 
         public EmployeeApi.Model.Department.Department? Department { get; set; }  //inherit gareko 
     }
