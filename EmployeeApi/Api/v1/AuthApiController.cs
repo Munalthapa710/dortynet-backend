@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using EmployeeApi.Service.Employee;
 
 namespace EmployeeApi.Api.v1;
 
@@ -19,10 +20,12 @@ public class AuthApiController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ApplicationDbContext _context;
 
-    public AuthApiController(IConfiguration configuration, ApplicationDbContext context)
+    private readonly IEmployeeService _employeeService;
+    public AuthApiController(IConfiguration configuration, ApplicationDbContext context, IEmployeeService employeeService   )
     {
         _configuration = configuration;
         _context = context;
+        _employeeService = employeeService;
     }
 
     [AllowAnonymous]
@@ -38,8 +41,7 @@ public class AuthApiController : ControllerBase
             return Ok(adminToken);
         }
 
-        var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.Email == request.Username);
+        var employee = await _employeeService.GetByEmail(request.Username);
 
         if (employee is null)
         {
