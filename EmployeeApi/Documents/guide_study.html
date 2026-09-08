@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Employee API Guide Study</title>
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; color: #1f2328; line-height: 1.52; max-width: 1040px; margin: 36px auto; padding: 0 28px; }
+    h1 { font-size: 34px; border-bottom: 3px solid #0969da; padding-bottom: 10px; margin-bottom: 6px; }
+    h2 { font-size: 24px; border-bottom: 1px solid #d0d7de; padding-bottom: 6px; margin-top: 34px; }
+    h3 { font-size: 18px; margin-top: 22px; }
+    h1, h2, h3 { color: #111827; line-height: 1.25; }
+    code { font-family: Consolas, "Courier New", monospace; background: #f6f8fa; padding: 2px 5px; border-radius: 4px; font-size: 92%; }
+    pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.45; }
+    pre code { background: transparent; padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 22px; }
+    th, td { border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f6f8fa; }
+    .note { border-left: 4px solid #0969da; background: #f6f8fa; padding: 10px 14px; margin: 14px 0; }
+    .warn { border-left: 4px solid #d1242f; background: #fff8f8; padding: 10px 14px; margin: 14px 0; }
+    .ok { border-left: 4px solid #1a7f37; background: #f6fff8; padding: 10px 14px; margin: 14px 0; }
+    .meta { color: #57606a; }
+    @media print {
+      body { margin: 14mm; max-width: none; padding: 0; }
+      h2 { break-after: avoid; }
+      pre, table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Employee API Guide Study</h1>
+  <p class="meta">Project: <code>EmployeeApi</code><br>Generated: September 8, 2026<br>Purpose: full step-by-step guide with copy-paste code for role login, employee password hashing, JWT authorization, Dapper stored procedures, migrations, SMTP email, and testing.</p>
+
+  <div class="warn">
+    <strong>Security note:</strong> this document intentionally uses placeholder SMTP credentials. Do not paste a real Gmail app password into documentation or commit it to a public repository. If a real app password was shared, rotate it in Google account settings.
+  </div>
+
+  <h2>1. Big Picture</h2>
+  <p>The backend is an ASP.NET Core Web API. It receives JSON from frontend/Postman, calls services, talks to SQL Server, and returns JSON.</p>
+  <pre><code>Frontend/Postman
+  -> Controller
+  -> Service Interface
+  -> Service Implementation
+  -> EF Core or Dapper Stored Procedure
+  -> SQL Server
+  -> JSON response</code></pre>
+
+  <p>For login:</p>
+  <pre><code>POST /api/auth/login
+  -> AuthApiController
+  -> IEmployeeService.GetByEmail()
+  -> EmployeeService
+  -> Dapper
+  -> dbo.GetEmployeeByEmail
+  -> PasswordHasher verifies password
+  -> JWT token returned</code></pre>
+
+  <h2>2. Folder Structure</h2>
+  <pre><code>EmployeeApi/
+  Api/v1/
+    AuthApiController.cs
+    EmployeeApiController.cs
+    AssignTaskApiController.cs
+    DepartmentApiController.cs
+    ClientApiController.cs
+
+  Configuration/
+    MailSettings.cs
+
+  Data/
+    ApplicationDbContext.cs
+    EmployeeApiDatabaseInitializer.cs
+
+  Model/
+    Employee/Employee.cs
+    Department/Department.cs
+    Client/Client.cs
+    AssignTask/AssignedTask.cs
+
+  Service/
+    Employee/IEmployeeService.cs
+    Employee/EmployeeService.cs
+    Notifications/IEmployeeEmailSender.cs
+    Notifications/SmtpEmployeeEmailSender.cs
+    Department/
+    Client/
+    AssignTask/
+
+  ViewModel/
+    Auth/LoginRequestViewModel.cs
+    Auth/LoginResponseViewModel.cs
+    Employee/CreateEmployeeViewModel.cs
+    Employee/UpdateEmployeeViewModel.cs
+
+  Migrations/
+    EF Core migration files
+
+  Documents/
+    guide_study.html
+    guide_study.pdf
+
+  appsettings.json
+  Program.cs
+  EmployeeApiServiceRegistrar.cs
+  EmployeeApi.csproj</code></pre>
+
+  <h2>3. Step 1: Install Dapper</h2>
+  <p>Dapper is used to call SQL stored procedures directly from C#.</p>
+  <pre><code>dotnet add EmployeeApi package Dapper</code></pre>
+  <p>After install, <code>EmployeeApi.csproj</code> should contain:</p>
+  <pre><code>&lt;PackageReference Include="Dapper" Version="2.1.79" /&gt;</code></pre>
+
+  <h2>4. Step 2: Employee Model</h2>
+  <p>File: <code>EmployeeApi/Model/Employee/Employee.cs</code></p>
+  <p>This model maps to the <code>Employees</code> table. Use <code>PasswordHash</code>, not plain <code>Password</code>, in the database model.</p>
+  <pre><code>using System.Text.Json.Serialization;
+
+namespace EmployeeApi.Model.Employee
+{
+    public class Employee
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public decimal Salary { get; set; }
+
+        public int DepartmentId { get; set; }
+
+        public int? ClientId { get; set; }
+
+        [JsonIgnore]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        public string Role { get; set; } = "Employee";
+
+        public EmployeeApi.Model.Client.Client? Client { get; set; }
+
+        public EmployeeApi.Model.Department.Department? Department { get; set; }
+    }
+}</code></pre>
+
+  <div class="note"><strong>Why JsonIgnore?</strong> It prevents <code>PasswordHash</code> from being returned in API JSON responses.</div>
+
+  <h2>5. Step 3: Create Employee ViewModel</h2>
+  <p>File: <code>EmployeeApi/ViewModel/Employee/CreateEmployeeViewModel.cs</code></p>
+  <p>The frontend sends plain password here. The controller hashes it before saving.</p>
+  <pre><code>using System.ComponentModel.DataAnnotations;
+
+namespace EmployeeApi.ViewModel.Employee;
+
+public class CreateEmployeeViewModel
+{
+    [Required]
+    [StringLength(150)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [EmailAddress]
+    [StringLength(255)]
+    public string Email { get; set; } = string.Empty;
+
+    [StringLength(10)]
+    [Phone]
+    public string? PhoneNumber { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal Salary { get; set; }
+
+    public int? ClientId { get; set; }
+
+    public int DepartmentId { get; set; }
+
+    [Required]
+    [StringLength(100, MinimumLength = 6)]
+    public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [RegularExpression("^(Manager|Employee)$", ErrorMessage = "Role must be Manager or Employee.")]
+    public string Role { get; set; } = "Employee";
+}</code></pre>
+
+  <h2>6. Step 4: Update Employee ViewModel</h2>
+  <p>File: <code>EmployeeApi/ViewModel/Employee/UpdateEmployeeViewModel.cs</code></p>
+  <p>Do not inherit from create model if password should be optional during update.</p>
+  <pre><code>using System.ComponentModel.DataAnnotations;
+
+namespace EmployeeApi.ViewModel.Employee;
+
+public class UpdateEmployeeViewModel
+{
+    [Required]
+    [StringLength(150)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [EmailAddress]
+    [StringLength(255)]
+    public string Email { get; set; } = string.Empty;
+
+    [StringLength(10)]
+    [Phone]
+    public string? PhoneNumber { get; set; }
+
+    [StringLength(100, MinimumLength = 6)]
+    public string? Password { get; set; }
+
+    [RegularExpression("^(Manager|Employee)$", ErrorMessage = "Role must be Manager or Employee.")]
+    public string? Role { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal Salary { get; set; }
+
+    public int? ClientId { get; set; }
+
+    public int DepartmentId { get; set; }
+}</code></pre>
+
+  <h2>7. Step 5: Migration For PasswordHash And Role</h2>
+  <p>Migration is needed only because the database table needs new columns.</p>
+  <pre><code>dotnet ef migrations add addrolebaseauth --project EmployeeApi
+dotnet ef database update --project EmployeeApi</code></pre>
+  <p>Expected migration idea:</p>
+  <pre><code>migrationBuilder.AddColumn&lt;string&gt;(
+    name: "PasswordHash",
+    table: "Employees",
+    type: "nvarchar(max)",
+    nullable: false,
+    defaultValue: "");
+
+migrationBuilder.AddColumn&lt;string&gt;(
+    name: "Role",
+    table: "Employees",
+    type: "nvarchar(max)",
+    nullable: false,
+    defaultValue: "Employee");</code></pre>
+
+  <p>Check SQL Server:</p>
+  <pre><code>SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Employees';</code></pre>
+
+  <h2>8. Step 6: Stored Procedures In SQL Server</h2>
+  <p>Create these in SSMS inside the same database used by the API: <code>EmployeeApiDb</code>.</p>
+
+  <h3>8.1 Get Employee By Email</h3>
+  <pre><code>USE EmployeeApiDb;
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[GetEmployeeByEmail]
+    @Email NVARCHAR(255)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        Name,
+        Email,
+        PhoneNumber,
+        PasswordHash,
+        Role,
+        Salary,
+        DepartmentId,
+        ClientId
+    FROM Employees
+    WHERE Email = @Email;
+END
+GO</code></pre>
+
+  <h3>8.2 Get All Employees</h3>
+  <pre><code>USE EmployeeApiDb;
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[GetAllEmployees]
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        Name,
+        Email,
+        PhoneNumber,
+        PasswordHash,
+        Role,
+        Salary,
+        DepartmentId,
+        ClientId
+    FROM Employees
+    ORDER BY Id DESC;
+END
+GO</code></pre>
+
+  <h3>8.3 Get Employee By Id</h3>
+  <pre><code>USE EmployeeApiDb;
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[GetEmployeeById]
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        Name,
+        Email,
+        PhoneNumber,
+        PasswordHash,
+        Role,
+        Salary,
+        DepartmentId,
+        ClientId
+    FROM Employees
+    WHERE Id = @Id;
+END
+GO</code></pre>
+
+  <h3>8.4 Delete Employee</h3>
+  <pre><code>USE EmployeeApiDb;
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[DeleteEmployee]
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM Employees
+    WHERE Id = @Id;
+
+    SELECT @@ROWCOUNT;
+END
+GO</code></pre>
+
+  <h3>8.5 Test Stored Procedures</h3>
+  <pre><code>EXEC [dbo].[GetEmployeeByEmail] @Email = 'employee@example.com';
+EXEC [dbo].[GetAllEmployees];
+EXEC [dbo].[GetEmployeeById] @Id = 1;
+EXEC [dbo].[DeleteEmployee] @Id = 1;</code></pre>
+
+  <h2>9. Step 7: Employee Service Interface</h2>
+  <p>File: <code>EmployeeApi/Service/Employee/IEmployeeService.cs</code></p>
+  <pre><code>using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+
+namespace EmployeeApi.Service.Employee
+{
+    public interface IEmployeeService
+    {
+        Task&lt;List&lt;EmployeeEntity&gt;&gt; GetAll();
+
+        Task&lt;EmployeeEntity?&gt; GetById(int id);
+
+        Task&lt;EmployeeEntity&gt; Create(EmployeeEntity employee);
+
+        Task&lt;EmployeeEntity&gt; Update(EmployeeEntity employee);
+
+        Task&lt;bool&gt; Delete(int id);
+
+        Task&lt;EmployeeEntity?&gt; GetByEmail(string email);
+    }
+}</code></pre>
+
+  <h2>10. Step 8: Employee Service With Dapper</h2>
+  <p>File: <code>EmployeeApi/Service/Employee/EmployeeService.cs</code></p>
+  <p>This version uses Dapper for list, get by id, get by email, and delete. It keeps EF Core for create and update.</p>
+  <pre><code>using Dapper;
+using EmployeeApi.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+
+namespace EmployeeApi.Service.Employee
+{
+    public class EmployeeService : IEmployeeService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly string _connString;
+
+        public EmployeeService(ApplicationDbContext context, IConfiguration configuration)
+        {
+            _context = context;
+            _connString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string not found.");
+        }
+
+        public async Task&lt;EmployeeEntity?&gt; GetByEmail(string email)
+        {
+            using var connection = new SqlConnection(_connString);
+
+            return await connection.QueryFirstOrDefaultAsync&lt;EmployeeEntity&gt;(
+                "[dbo].[GetEmployeeByEmail]",
+                new { Email = email },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public async Task&lt;List&lt;EmployeeEntity&gt;&gt; GetAll()
+        {
+            using var connection = new SqlConnection(_connString);
+
+            var employees = await connection.QueryAsync&lt;EmployeeEntity&gt;(
+                "[dbo].[GetAllEmployees]",
+                commandType: CommandType.StoredProcedure);
+
+            return employees.ToList();
+        }
+
+        public async Task&lt;EmployeeEntity?&gt; GetById(int id)
+        {
+            using var connection = new SqlConnection(_connString);
+
+            return await connection.QueryFirstOrDefaultAsync&lt;EmployeeEntity&gt;(
+                "[dbo].[GetEmployeeById]",
+                new { Id = id },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public async Task&lt;EmployeeEntity&gt; Create(EmployeeEntity employee)
+        {
+            _context.Employees.Add(employee);
+            await _context.SaveChangesAsync();
+            return employee;
+        }
+
+        public async Task&lt;EmployeeEntity&gt; Update(EmployeeEntity employee)
+        {
+            var existingEmployee = await _context.Employees.FindAsync(employee.Id)
+                ?? throw new KeyNotFoundException($"Employee {employee.Id} was not found.");
+
+            _context.Entry(existingEmployee).CurrentValues.SetValues(employee);
+            await _context.SaveChangesAsync();
+            return existingEmployee;
+        }
+
+        public async Task&lt;bool&gt; Delete(int id)
+        {
+            using var connection = new SqlConnection(_connString);
+
+            var affectedRows = await connection.ExecuteScalarAsync&lt;int&gt;(
+                "[dbo].[DeleteEmployee]",
+                new { Id = id },
+                commandType: CommandType.StoredProcedure);
+
+            return affectedRows &gt; 0;
+        }
+    }
+}</code></pre>
+
+  <h2>11. Step 9: Login Request And Response ViewModels</h2>
+  <p>File: <code>EmployeeApi/ViewModel/Auth/LoginRequestViewModel.cs</code></p>
+  <pre><code>namespace EmployeeApi.ViewModel.Auth;
+
+public class LoginRequestViewModel
+{
+    public string Username { get; set; } = string.Empty;
+
+    public string Password { get; set; } = string.Empty;
+}</code></pre>
+
+  <p>File: <code>EmployeeApi/ViewModel/Auth/LoginResponseViewModel.cs</code></p>
+  <pre><code>namespace EmployeeApi.ViewModel.Auth;
+
+public class LoginResponseViewModel
+{
+    public string Token { get; set; } = string.Empty;
+
+    public DateTime ExpiresAt { get; set; }
+}</code></pre>
+
+  <h2>12. Step 10: Auth Controller</h2>
+  <p>File: <code>EmployeeApi/Api/v1/AuthApiController.cs</code></p>
+  <p>This controller supports temporary manager login and real employee login.</p>
+  <pre><code>using EmployeeApi.Model.Employee;
+using EmployeeApi.Service.Employee;
+using EmployeeApi.ViewModel.Auth;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace EmployeeApi.Api.v1;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthApiController : ControllerBase
+{
+    private readonly IConfiguration _configuration;
+    private readonly IEmployeeService _employeeService;
+
+    public AuthApiController(IConfiguration configuration, IEmployeeService employeeService)
+    {
+        _configuration = configuration;
+        _employeeService = employeeService;
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task&lt;IActionResult&gt; Login([FromBody] LoginRequestViewModel request)
+    {
+        var configuredUsername = _configuration["ApiUser:Username"];
+        var configuredPassword = _configuration["ApiUser:Password"];
+
+        if (request.Username == configuredUsername && request.Password == configuredPassword)
+        {
+            var adminToken = CreateToken(request.Username, "Manager");
+            return Ok(adminToken);
+        }
+
+        var employee = await _employeeService.GetByEmail(request.Username);
+
+        if (employee is null)
+        {
+            return Unauthorized("Invalid username or password.");
+        }
+
+        var hasher = new PasswordHasher&lt;Employee&gt;();
+        var passwordResult = hasher.VerifyHashedPassword(
+            employee,
+            employee.PasswordHash,
+            request.Password);
+
+        if (passwordResult == PasswordVerificationResult.Failed)
+        {
+            return Unauthorized("Invalid username or password.");
+        }
+
+        var token = CreateToken(employee.Email, employee.Role, employee.Id);
+        return Ok(token);
+    }
+
+    private LoginResponseViewModel CreateToken(string username, string role, int? employeeId = null)
+    {
+        var secret = _configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+        var issuer = _configuration["Jwt:Issuer"];
+        var audience = _configuration["Jwt:Audience"];
+        var expirationMinutes = _configuration.GetValue("Jwt:ExpirationMinutes", 30);
+        var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);
+
+        var claims = new List&lt;Claim&gt;
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, username),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.Role, role)
+        };
+
+        if (employeeId.HasValue)
+        {
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, employeeId.Value.ToString()));
+        }
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var jwt = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
+
+        return new LoginResponseViewModel
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(jwt),
+            ExpiresAt = expiresAt
+        };
+    }
+}</code></pre>
+
+  <h2>13. Step 11: Employee Controller With Password Hashing And Email</h2>
+  <p>File: <code>EmployeeApi/Api/v1/EmployeeApiController.cs</code></p>
+  <pre><code>using EmployeeApi.Service.Employee;
+using EmployeeApi.Service.Notifications;
+using EmployeeApi.ViewModel.Employee;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+
+namespace EmployeeApi.Api.v1
+{
+    [ApiController]
+    [Route("api/employee")]
+    public class EmployeeApiController : ControllerBase
+    {
+        private readonly IEmployeeService _service;
+        private readonly IEmployeeEmailSender _employeeEmailSender;
+
+        public EmployeeApiController(
+            IEmployeeService service,
+            IEmployeeEmailSender employeeEmailSender)
+        {
+            _service = service;
+            _employeeEmailSender = employeeEmailSender;
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Manager")]
+        public async Task&lt;IActionResult&gt; Get()
+        {
+            return Ok(await _service.GetAll());
+        }
+
+        [HttpGet("{id:int}")]
+        [Authorize(Roles = "Manager,Employee")]
+        public async Task&lt;IActionResult&gt; GetById(int id)
+        {
+            var employee = await _service.GetById(id);
+            return employee is null ? NotFound() : Ok(employee);
+        }
+
+        [HttpPost("new")]
+        [Authorize(Roles = "Manager")]
+        public async Task&lt;IActionResult&gt; Create([FromBody] CreateEmployeeViewModel model)
+        {
+            var employee = new EmployeeEntity
+            {
+                Name = model.Name,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber ?? string.Empty,
+                Salary = model.Salary,
+                ClientId = model.ClientId,
+                DepartmentId = model.DepartmentId,
+                Role = model.Role
+            };
+
+            var hasher = new PasswordHasher&lt;EmployeeEntity&gt;();
+            employee.PasswordHash = hasher.HashPassword(employee, model.Password);
+
+            var createdEmployee = await _service.Create(employee);
+
+            await _employeeEmailSender.SendAccountCreatedAsync(
+                createdEmployee,
+                model.Password);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = createdEmployee.Id },
+                createdEmployee);
+        }
+
+        [HttpPut("{id:int}")]
+        [Authorize(Roles = "Manager")]
+        public async Task&lt;IActionResult&gt; Update(int id, [FromBody] UpdateEmployeeViewModel model)
+        {
+            var existingEmployee = await _service.GetById(id);
+            if (existingEmployee is null)
+            {
+                return NotFound();
+            }
+
+            var employee = new EmployeeEntity
+            {
+                Id = id,
+                Name = model.Name,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber ?? string.Empty,
+                PasswordHash = existingEmployee.PasswordHash,
+                Role = string.IsNullOrWhiteSpace(model.Role) ? existingEmployee.Role : model.Role,
+                Salary = model.Salary,
+                ClientId = model.ClientId,
+                DepartmentId = model.DepartmentId
+            };
+
+            if (!string.IsNullOrWhiteSpace(model.Password))
+            {
+                var hasher = new PasswordHasher&lt;EmployeeEntity&gt;();
+                employee.PasswordHash = hasher.HashPassword(employee, model.Password);
+            }
+
+            return Ok(await _service.Update(employee));
+        }
+
+        [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Manager")]
+        public async Task&lt;IActionResult&gt; Delete(int id)
+        {
+            return await _service.Delete(id) ? NoContent() : NotFound();
+        }
+    }
+}</code></pre>
+
+  <h2>14. Step 12: Protect Other Controllers</h2>
+  <p>If the whole controller is Manager-only, add this at the top:</p>
+  <pre><code>using Microsoft.AspNetCore.Authorization;</code></pre>
+
+  <p>Then place this above the class:</p>
+  <pre><code>[Authorize(Roles = "Manager")]</code></pre>
+
+  <h3>AssignTaskApiController Example</h3>
+  <pre><code>[ApiController]
+[Route("api/assign-task")]
+[Authorize(Roles = "Manager")]
+public class AssignTaskApiController : ControllerBase
+{
+    // All actions here are Manager-only.
+}</code></pre>
+
+  <h3>DepartmentApiController Example</h3>
+  <pre><code>[ApiController]
+[Route("api/department")]
+[Authorize(Roles = "Manager")]
+public class DepartmentApiController : ControllerBase
+{
+    // All actions here are Manager-only.
+}</code></pre>
+
+  <h3>ClientApiController Example</h3>
+  <pre><code>[ApiController]
+[Route("api/client")]
+[Authorize(Roles = "Manager")]
+public class ClientApiController : ControllerBase
+{
+    // All actions here are Manager-only.
+}</code></pre>
+
+  <h2>15. Step 13: Mail Settings</h2>
+  <p>File: <code>EmployeeApi/Configuration/MailSettings.cs</code></p>
+  <pre><code>namespace EmployeeApi.Configuration;
+
+public class MailSettings
+{
+    public bool Enabled { get; set; }
+
+    public string Host { get; set; } = string.Empty;
+
+    public int Port { get; set; }
+
+    public bool UseSsl { get; set; }
+
+    public string UserName { get; set; } = string.Empty;
+
+    public string Password { get; set; } = string.Empty;
+
+    public string FromEmail { get; set; } = string.Empty;
+
+    public string FromName { get; set; } = string.Empty;
+}</code></pre>
+
+  <h2>16. Step 14: Email Sender Interface</h2>
+  <p>File: <code>EmployeeApi/Service/Notifications/IEmployeeEmailSender.cs</code></p>
+  <pre><code>using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+
+namespace EmployeeApi.Service.Notifications;
+
+public interface IEmployeeEmailSender
+{
+    Task SendAccountCreatedAsync(EmployeeEntity employee, string plainPassword);
+}</code></pre>
+
+  <h2>17. Step 15: SMTP Email Sender</h2>
+  <p>File: <code>EmployeeApi/Service/Notifications/SmtpEmployeeEmailSender.cs</code></p>
+  <pre><code>using EmployeeApi.Configuration;
+using Microsoft.Extensions.Options;
+using System.Net;
+using System.Net.Mail;
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+
+namespace EmployeeApi.Service.Notifications;
+
+public class SmtpEmployeeEmailSender : IEmployeeEmailSender
+{
+    private readonly MailSettings _settings;
+
+    public SmtpEmployeeEmailSender(IOptions&lt;MailSettings&gt; options)
+    {
+        _settings = options.Value;
+    }
+
+    public async Task SendAccountCreatedAsync(EmployeeEntity employee, string plainPassword)
+    {
+        if (!_settings.Enabled)
+        {
+            return;
+        }
+
+        using var message = new MailMessage
+        {
+            From = new MailAddress(_settings.FromEmail, _settings.FromName),
+            Subject = "Your employee account has been created",
+            Body = $"""
+Hello {employee.Name},
+
+Your employee account has been created.
+
+Login Email: {employee.Email}
+Password: {plainPassword}
+Role: {employee.Role}
+
+Please change your password after login.
+""",
+            IsBodyHtml = false
+        };
+
+        message.To.Add(employee.Email);
+
+        using var smtpClient = new SmtpClient(_settings.Host, _settings.Port)
+        {
+            EnableSsl = _settings.UseSsl,
+            Credentials = new NetworkCredential(_settings.UserName, _settings.Password)
+        };
+
+        await smtpClient.SendMailAsync(message);
+    }
+}</code></pre>
+
+  <h2>18. Step 16: Register Services In DI</h2>
+  <p>File: <code>EmployeeApi/EmployeeApiServiceRegistrar.cs</code></p>
+  <pre><code>using EmployeeApi.Service.AssignTask;
+using EmployeeApi.Service.Client;
+using EmployeeApi.Service.Department;
+using EmployeeApi.Service.Employee;
+using EmployeeApi.Service.Notifications;
+
+namespace EmployeeApi;
+
+public static class EmployeeApiServiceRegistrar
+{
+    public static IServiceCollection AddEmployeeApiServices(this IServiceCollection services)
+    {
+        services.AddScoped&lt;IEmployeeService, EmployeeService&gt;();
+        services.AddScoped&lt;IAssignTaskService, AssignTaskService&gt;();
+        services.AddScoped&lt;IDepartmentService, DepartmentService&gt;();
+        services.AddScoped&lt;IClientService, ClientService&gt;();
+        services.AddScoped&lt;IEmployeeEmailSender, SmtpEmployeeEmailSender&gt;();
+
+        return services;
+    }
+}</code></pre>
+
+  <h2>19. Step 17: Program.cs Setup</h2>
+  <p>Important snippets for <code>Program.cs</code>.</p>
+  <pre><code>using EmployeeApi.Configuration;</code></pre>
+
+  <pre><code>builder.Services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.Configure&lt;MailSettings&gt;(
+    builder.Configuration.GetSection("MailSettings"));
+
+builder.Services.AddEmployeeApiServices();</code></pre>
+
+  <pre><code>builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSecret)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();</code></pre>
+
+  <pre><code>app.UseCors("ReactPolicy");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();</code></pre>
+
+  <h2>20. Step 18: appsettings.json</h2>
+  <p>Use this structure. Replace SMTP values with your provider values.</p>
+  <pre><code>{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=EmployeeApiDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "Jwt": {
+    "Issuer": "EmployeeApi",
+    "Audience": "EmployeeApiClient",
+    "Secret": "EmployeeApi-Development-Secret-Key-Change-Before-Production-2026",
+    "ExpirationMinutes": 1740
+  },
+  "ApiUser": {
+    "Username": "admin",
+    "Password": "admin123"
+  },
+  "MailSettings": {
+    "Enabled": true,
+    "Host": "smtp.gmail.com",
+    "Port": 587,
+    "UseSsl": true,
+    "UserName": "your-email@gmail.com",
+    "Password": "your-gmail-app-password",
+    "FromEmail": "your-email@gmail.com",
+    "FromName": "Employee API"
+  },
+  "AllowedHosts": "*"
+}</code></pre>
+
+  <h2>21. Step 19: Frontend Requirements</h2>
+  <p>Login endpoint:</p>
+  <pre><code>POST /api/auth/login</code></pre>
+  <p>Request body:</p>
+  <pre><code>{
+  "username": "employee@example.com",
+  "password": "EmployeePassword"
+}</code></pre>
+  <p>For employee login, <code>username</code> means email.</p>
+  <p>Protected requests must include:</p>
+  <pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
+  <p>Frontend should decode JWT role and show/hide UI based on:</p>
+  <pre><code>Manager
+Employee</code></pre>
+
+  <h2>22. Step 20: Testing With Postman</h2>
+  <h3>22.1 Login As Temporary Manager</h3>
+  <pre><code>POST http://localhost:5256/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}</code></pre>
+
+  <h3>22.2 Create Employee</h3>
+  <pre><code>POST http://localhost:5256/api/employee/new
+Authorization: Bearer &lt;manager-token&gt;
+Content-Type: application/json
+
+{
+  "name": "Test Employee",
+  "email": "employee@example.com",
+  "phoneNumber": "9800000000",
+  "password": "Test1234",
+  "role": "Employee",
+  "salary": 10000,
+  "departmentId": 1,
+  "clientId": null
+}</code></pre>
+
+  <h3>22.3 Login As Employee</h3>
+  <pre><code>POST http://localhost:5256/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "employee@example.com",
+  "password": "Test1234"
+}</code></pre>
+
+  <h3>22.4 Test Manager-Only API With Employee Token</h3>
+  <pre><code>GET http://localhost:5256/api/assign-task
+Authorization: Bearer &lt;employee-token&gt;</code></pre>
+  <p>Expected result if endpoint is Manager-only:</p>
+  <pre><code>403 Forbidden</code></pre>
+
+  <h2>23. SQL Debug Queries</h2>
+  <h3>Check Columns</h3>
+  <pre><code>SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Employees';</code></pre>
+
+  <h3>Check Employee Login Data</h3>
+  <pre><code>SELECT Id, Name, Email, Role, PasswordHash
+FROM Employees
+WHERE Email = 'employee@example.com';</code></pre>
+
+  <h3>Check Stored Procedure Exists</h3>
+  <pre><code>SELECT
+    DB_NAME() AS DatabaseName,
+    SCHEMA_NAME(schema_id) AS SchemaName,
+    name AS ProcedureName
+FROM sys.procedures
+WHERE name IN (
+    'GetEmployeeByEmail',
+    'GetAllEmployees',
+    'GetEmployeeById',
+    'DeleteEmployee'
+);</code></pre>
+
+  <h2>24. HTTP Status Codes</h2>
+  <table>
+    <tr><th>Status</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td><code>200 OK</code></td><td>Request successful.</td><td>Login success, get list success.</td></tr>
+    <tr><td><code>201 Created</code></td><td>New record created.</td><td>Employee created.</td></tr>
+    <tr><td><code>204 No Content</code></td><td>Delete success with no response body.</td><td>Employee deleted.</td></tr>
+    <tr><td><code>401 Unauthorized</code></td><td>No valid authentication.</td><td>Wrong password, missing token.</td></tr>
+    <tr><td><code>403 Forbidden</code></td><td>Logged in but role not allowed.</td><td>Employee token on Manager API.</td></tr>
+    <tr><td><code>404 Not Found</code></td><td>Record not found.</td><td>Employee id does not exist.</td></tr>
+  </table>
+
+  <h2>25. Common Mistakes And Fixes</h2>
+  <table>
+    <tr><th>Mistake</th><th>Why It Breaks</th><th>Fix</th></tr>
+    <tr><td>Saving plain password in DB</td><td>Login expects hashed password.</td><td>Use <code>PasswordHasher.HashPassword</code>.</td></tr>
+    <tr><td>Using <code>Password</code> column in model</td><td>Confuses plain password and hash.</td><td>Use <code>PasswordHash</code>.</td></tr>
+    <tr><td>Stored procedure exists in wrong DB</td><td>API cannot find it.</td><td>Create SP in <code>EmployeeApiDb</code>.</td></tr>
+    <tr><td>Role spelling mismatch</td><td>Authorize checks exact string.</td><td>Use exactly <code>Manager</code> or <code>Employee</code>.</td></tr>
+    <tr><td>Old JWT token</td><td>Token may not contain role.</td><td>Login again and use fresh token.</td></tr>
+    <tr><td>SMTP normal Gmail password</td><td>Gmail blocks normal password.</td><td>Use Gmail app password.</td></tr>
+    <tr><td>Backend not restarted</td><td>Old code/config still running.</td><td>Restart API after changes.</td></tr>
+  </table>
+
+  <h2>26. What Needs Migration And What Does Not</h2>
+  <table>
+    <tr><th>Change</th><th>Migration Needed?</th></tr>
+    <tr><td>Add <code>PasswordHash</code> column</td><td>Yes</td></tr>
+    <tr><td>Add <code>Role</code> column</td><td>Yes</td></tr>
+    <tr><td>Add <code>[Authorize]</code></td><td>No</td></tr>
+    <tr><td>Change login logic</td><td>No</td></tr>
+    <tr><td>Add Dapper package</td><td>No database migration</td></tr>
+    <tr><td>Create stored procedure manually in SSMS</td><td>No EF migration</td></tr>
+    <tr><td>Add SMTP email sending</td><td>No</td></tr>
+    <tr><td>Add a new database table</td><td>Yes</td></tr>
+  </table>
+
+  <h2>27. Final End-To-End Flow</h2>
+  <pre><code>1. Manager logs in with admin/admin123.
+2. Backend returns JWT with role Manager.
+3. Manager calls POST /api/employee/new.
+4. Controller receives CreateEmployeeViewModel.
+5. Controller hashes model.Password into Employee.PasswordHash.
+6. EmployeeService saves employee to SQL Server.
+7. SmtpEmployeeEmailSender sends credentials to employee email.
+8. Employee logs in with email/password.
+9. AuthApiController calls EmployeeService.GetByEmail.
+10. EmployeeService calls dbo.GetEmployeeByEmail using Dapper.
+11. PasswordHasher verifies request password against PasswordHash.
+12. Backend returns JWT with role from employee table.
+13. Protected controllers allow or block requests based on role.</code></pre>
+
+  <h2>28. Study Checklist</h2>
+  <ol>
+    <li>Read <code>Employee.cs</code> and understand model vs database.</li>
+    <li>Read <code>CreateEmployeeViewModel.cs</code> and understand request body.</li>
+    <li>Trace <code>EmployeeApiController.Create</code> from request to save to email.</li>
+    <li>Trace <code>AuthApiController.Login</code> from request to token.</li>
+    <li>Run each stored procedure manually in SSMS.</li>
+    <li>Login as manager in Postman.</li>
+    <li>Create employee in Postman.</li>
+    <li>Login as employee in Postman.</li>
+    <li>Test <code>401</code> by using wrong password.</li>
+    <li>Test <code>403</code> by using employee token on Manager-only endpoint.</li>
+  </ol>
+</body>
+</html>
