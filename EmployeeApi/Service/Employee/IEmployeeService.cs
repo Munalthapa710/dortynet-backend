@@ -8,13 +8,13 @@ namespace EmployeeApi.Service.Employee // This code defines the IEmployeeService
     {
         Task<List<EmployeeEntity>> GetAll(); //task mean asynchronous operation that will eventually return a List of EmployeeEntity objects.
 
-        Task<EmployeeEntity?> GetById(int id);
+        Task<EmployeeEntity?> GetById(int id); // This method retrieves an employee by their ID. It returns a Task that will eventually return an EmployeeEntity object if found, or null if not found.
 
         Task<EmployeeEntity> Create(EmployeeEntity employee); // EmployeeEntity employee is a parameter that represents the employee object to be created. The method will return the created EmployeeEntity object.
 
-        Task<EmployeeEntity> Update(EmployeeEntity employee);
+        Task<EmployeeEntity> Update(EmployeeEntity employee); // EmployeeEntity employee is a parameter that represents the employee object to be updated. The method will return the updated EmployeeEntity object.
 
-        Task<bool> Delete(int id);
+        Task<bool> Delete(int id); // This method deletes an employee by their ID. It returns a Task that will eventually return a boolean value indicating whether the deletion was successful (true) or not (false).
 
         Task<EmployeeEntity?> GetByEmail(string email); // This method retrieves an employee by their email address. It returns a Task that will eventually return an EmployeeEntity object if found, or null if not found.
     }

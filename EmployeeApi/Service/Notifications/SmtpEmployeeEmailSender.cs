@@ -35,7 +35,6 @@ Login Email: {employee.Email}
 Password: {plainPassword}
 Role: {employee.Role}
 
-Please change your password after login.
 """,
             IsBodyHtml = false
         };

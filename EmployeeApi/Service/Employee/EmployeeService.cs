@@ -15,9 +15,9 @@ namespace EmployeeApi.Service.Employee
         private readonly string _connString;
         public EmployeeService(ApplicationDbContext context, IConfiguration configuration) //constructor that takes an ApplicationDbContext parameter and initializes the _context field with it (constructor dependency injection)
         {
-            _context = context; //give to context the database context to access the database and perform operations on the employee table
+            _context = context; //give to context the database context to access the database and perform operations on the employee table this is for entity framework core 
             _connString = configuration.GetConnectionString("DefaultConnection") ?? //connection string is used to connect to the database, it is retrieved from the configuration file (appsettings.json) using the GetConnectionString method, if the connection string is not found, an InvalidOperationException is thrown with a message indicating that the connection string was not found
-                throw new InvalidOperationException("Connection string not found."); 
+                throw new InvalidOperationException("Connection string not found."); // this is for dapper to connect to the database and perform operations on the employee table
         }
 
         public async Task<EmployeeEntity?> GetByEmail(string email) //find one employee by email, if not found return null and if found return the employee with the related department data
