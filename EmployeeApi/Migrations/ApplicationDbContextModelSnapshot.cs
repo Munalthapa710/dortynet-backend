@@ -120,6 +120,9 @@ namespace EmployeeApi.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("InternId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -146,7 +149,30 @@ namespace EmployeeApi.Migrations
 
                     b.HasIndex("DepartmentId");
 
+                    b.HasIndex("InternId");
+
                     b.ToTable("Employees");
+                });
+
+            modelBuilder.Entity("EmployeeApi.Model.Intern.Intern", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Interns");
                 });
 
             modelBuilder.Entity("EmployeeApi.Model.Employee.Employee", b =>
@@ -161,12 +187,21 @@ namespace EmployeeApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EmployeeApi.Model.Intern.Intern", null)
+                        .WithMany("Employees")
+                        .HasForeignKey("InternId");
+
                     b.Navigation("Client");
 
                     b.Navigation("Department");
                 });
 
             modelBuilder.Entity("EmployeeApi.Model.Department.Department", b =>
+                {
+                    b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("EmployeeApi.Model.Intern.Intern", b =>
                 {
                     b.Navigation("Employees");
                 });
