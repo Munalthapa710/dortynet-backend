@@ -1,6 +1,6 @@
 ﻿namespace EmployeeApi.ViewModel.Intern
 {
-    public class UpdateInternViewModel:CreateInternViewModel
+    public class UpdateInternViewModel : CreateInternViewModel
     {
     }
 }
