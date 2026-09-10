@@ -25,18 +25,20 @@ namespace EmployeeApi.Data
         public DbSet<Intern> Interns { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<Employee>()
-                .Property(e => e.Salary)
-                .HasPrecision(18, 2);
+        {  // to configure database rules and relationships between entities using fluent API 
+            modelBuilder.Entity<Employee>() // use fluent API to configure the Salary property with precision and scale
+                .Property(e => e.Salary) // configure the Salary property of the Employee entity
+                .HasPrecision(18, 2); // set the precision to 18 and scale to 2
 
-            modelBuilder.Entity<Intern>()
-                .HasMany(i => i.Employees);
+            modelBuilder.Entity<Intern>() // use fluent API to configure the relationship between Intern and Employee
+                .HasMany(i => i.Employees); // configure the Employees navigation property of the Intern entity
 
-            modelBuilder.Entity<Employee>()
-                .HasOne(e => e.Department)
-                .WithMany(d => d.Employees)
-                .HasForeignKey(e => e.DepartmentId);
+            modelBuilder.Entity<Employee>() // use fluent API to configure the relationship between Employee and Department
+                .HasOne(e => e.Department) // configure the Department navigation property of the Employee entity
+                .WithMany(d => d.Employees) // configure the Employees navigation property of the Department entity
+                .HasForeignKey(e => e.DepartmentId); // configure the foreign key property of the Employee entitys
+
+
 
             base.OnModelCreating(modelBuilder);
         }
