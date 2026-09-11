@@ -23,6 +23,7 @@ namespace EmployeeApi.Model.Employee
         [JsonIgnore]
         public string PasswordHash { get; set; } = string.Empty;
         public string Role { get; set; } = "Employee";
+        public string Status { get; set; } = "active";
         public EmployeeApi.Model.Client.Client? Client { get; set; }
 
 

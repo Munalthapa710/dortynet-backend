@@ -31,4 +31,7 @@ public class CreateEmployeeViewModel
     [Required]
     public string Role { get; set; } = "Employee";
 
+    [RegularExpression("^(active|inactive)$", ErrorMessage = "Status must be active or inactive.")]
+    public string Status { get; set; } = "active";
+
 }

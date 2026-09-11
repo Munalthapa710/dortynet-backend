@@ -26,9 +26,10 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
         public async Task<IActionResult> Get([FromQuery] int page = 1,
       [FromQuery] int limit = 10,
       [FromQuery] string query = "",
-            [FromQuery] string? departmentId = null)// This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
+       [FromQuery] int? departmentId = null,
+      [FromQuery] string status = "active")// This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
         {
-            return Ok(await _service.GetPaged(page,limit,query,departmentId)); // Use the _service to get all employees and return them in the response with an HTTP 200 OK status code. The Ok() method creates an ObjectResult that produces a 200 OK response with the specified value (the list of employees) as the content.
+            return Ok(await _service.GetPaged(page,limit,query,departmentId,status)); // Use the _service to get all employees and return them in the response with an HTTP 200 OK status code. The Ok() method creates an ObjectResult that produces a 200 OK response with the specified value (the list of employees) as the content.
         }
 
         [HttpGet("{id:int}")]// This method will handle HTTP GET requests to the URL api/employee/{id}, where {id} is an integer representing the employee's ID.
@@ -50,7 +51,8 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
                 PhoneNumber = model.PhoneNumber,
                 Salary = model.Salary,
                 ClientId = model.ClientId,
-                DepartmentId = model.DepartmentId
+                DepartmentId = model.DepartmentId,
+                Status = model.Status
             };
 
             var hasher = new PasswordHasher<EmployeeEntity>(); //create password hasher to hash the password before storing it in the database. The PasswordHasher class is a built-in class in ASP.NET Core that provides a way to hash passwords using a secure algorithm. It takes an instance of the EmployeeEntity class as a generic parameter, which allows it to access the properties of the employee entity when hashing the password.
@@ -84,7 +86,8 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
                 Role = existingEmployee.Role,
                 Salary = model.Salary,
                 ClientId = model.ClientId,
-                DepartmentId = model.DepartmentId
+                DepartmentId = model.DepartmentId,
+                Status = model.Status
             };
 
             return Ok(await _service.Update(employee)); // Calls service.

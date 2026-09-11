@@ -29,4 +29,8 @@ public class UpdateEmployeeViewModel
     public int? ClientId { get; set; }
 
     public int DepartmentId { get; set; }
+
+    [RegularExpression("^(active|inactive)$", ErrorMessage = "Status must be active or inactive.")]
+    public string Status { get; set; } = "active";
+
 }

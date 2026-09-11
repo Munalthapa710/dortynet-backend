@@ -18,6 +18,8 @@ namespace EmployeeApi.Service.Employee // This code defines the IEmployeeService
         Task<bool> Delete(int id); // This method deletes an employee by their ID. It returns a Task that will eventually return a boolean value indicating whether the deletion was successful (true) or not (false).
 
         Task<EmployeeEntity?> GetByEmail(string email); // This method retrieves an employee by their email address. It returns a Task that will eventually return an EmployeeEntity object if found, or null if not found.
-        Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query,string departmentId); // This method retrieves a paginated list of employees based on the specified page number, limit (number of items per page), and an optional query string for filtering. It returns a Task that will eventually return a PagedResult containing a list of EmployeeListViewModel objects.
+        Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query, int? departmentId, string status); // This method retrieves a paginated list of employees based on the specified page number, limit (number of items per page), and an optional query string for filtering. It returns a Task that will eventually return a PagedResult containing a list of EmployeeListViewModel objects.
+    
+
     }
 }

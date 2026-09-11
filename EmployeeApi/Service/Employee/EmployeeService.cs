@@ -92,7 +92,9 @@ namespace EmployeeApi.Service.Employee
                     employee.Role,
                     employee.Salary,
                     employee.DepartmentId,
-                    employee.ClientId
+                    employee.ClientId,
+                    employee.Status
+
                 },
                 commandType: CommandType.StoredProcedure);
 
@@ -126,7 +128,8 @@ namespace EmployeeApi.Service.Employee
                     employee.Role,
                     employee.Salary,
                     employee.DepartmentId,
-                    employee.ClientId
+                    employee.ClientId,
+                    employee.Status
                 },
                 commandType: CommandType.StoredProcedure);
 
@@ -159,7 +162,7 @@ namespace EmployeeApi.Service.Employee
             return affectedRows > 0;
         }
 
-      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query ,string departmentId)
+      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query, int? departmentId, string status)
         {
             using var connection = new SqlConnection(_connString);
 
@@ -170,7 +173,9 @@ namespace EmployeeApi.Service.Employee
                     Page = page,
                     Limit = limit,
                     Query = query ?? string.Empty,
-                    DepartmentId = departmentId ?? string.Empty
+                    DepartmentId = departmentId,
+                    Status = status ?? string.Empty
+
                 },
                 commandType: CommandType.StoredProcedure
             );
