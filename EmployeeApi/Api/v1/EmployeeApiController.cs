@@ -1,4 +1,5 @@
 //he part that receives HTTP requests from Postman, React, Angular, mobile apps
+using EmployeeApi.Api;
 using Microsoft.AspNetCore.Identity;
 using EmployeeApi.Service.Employee; // taking service to use it in the controller to perform operations on employee data
 using EmployeeApi.Service.Notifications;
@@ -10,7 +11,7 @@ using Microsoft.AspNetCore.Authorization; //alias
 namespace EmployeeApi.Api.v1  {// Groups API controllers together.
     [ApiController] //This class is an API Controller. It enables features like automatic model validation and binding source inference.
     [Route("api/employee")] // base url for all endpoints in this controller, so all endpoints will start with api/employee
-    public class EmployeeApiController : ControllerBase // ok NotFound badrequest Nocontent This class is a controller that handles HTTP requests related to employee operations. It inherits from ControllerBase, which provides basic functionality for handling HTTP requests and responses. The controller uses the IEmployeeService to perform operations on employee data and the CreateEmployeeViewModel and UpdateEmployeeViewModel to receive and validate data from the client when creating or updating an employee.
+    public class EmployeeApiController : BaseApiController // ok NotFound badrequest Nocontent This class is a controller that handles HTTP requests related to employee operations. It inherits from ControllerBase, which provides basic functionality for handling HTTP requests and responses. The controller uses the IEmployeeService to perform operations on employee data and the CreateEmployeeViewModel and UpdateEmployeeViewModel to receive and validate data from the client when creating or updating an employee.
     {
         private readonly IEmployeeService _service; // declare a private readonly field to hold the instance of the IEmployeeService, which will be used to perform operations on employee data
         private readonly IEmployeeEmailSender _employeeEmailSender;
@@ -29,7 +30,8 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
        [FromQuery] int? departmentId = null,
       [FromQuery] string status = "active")// This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
         {
-            return Ok(await _service.GetPaged(page,limit,query,departmentId,status)); // Use the _service to get all employees and return them in the response with an HTTP 200 OK status code. The Ok() method creates an ObjectResult that produces a 200 OK response with the specified value (the list of employees) as the content.
+            var employees = await _service.GetPaged(page, limit, query, departmentId, status); // Calls service.GetPaged(page, limit, query, departmentId, status) to retrieve a paginated list of employees based on the provided parameters. The result is stored in the employees variable.
+            return SuccessResponse("Employees loaded successfully.", employees);// Returns a success response with a message and the list of employees. The SuccessResponse method is defined in the BaseApiController class and returns an HTTP 200 OK status code along with the provided message and data.
         }
 
         [HttpGet("{id:int}")]// This method will handle HTTP GET requests to the URL api/employee/{id}, where {id} is an integer representing the employee's ID.
@@ -37,13 +39,20 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
         public async Task<IActionResult> GetById(int id) // This method will handle HTTP GET requests to the URL api/employee/{id}, where {id} is an integer representing the employee's ID. 
         {
             var employee = await _service.GetById(id); // Calls service.GetById(id) to retrieve the employee with the specified ID. The result is stored in the employee variable.
-            return employee is null ? NotFound() : Ok(employee); // if else jastai ho 
+            return employee is null
+     ? NotFoundResponse("Employee not found.")
+     : SuccessResponse("Employee loaded successfully.", employee); // if else jastai ho 
         }
 
         [HttpPost("new")] // This method will handle HTTP POST requests to the base URL (api/employee/new) and will create a new employee using the data provided in the request body. It uses the CreateEmployeeViewModel to receive and validate the data from the client, and then it uses the _service to create a new employee. If the creation is successful, it returns the created employee in the response with an HTTP 201 Created status code.
         [Authorize(Roles ="Manager")]// This attribute specifies that only users with the "Manager" role are authorized to access this endpoint. It restricts access to the Create method, ensuring that only users with the appropriate role can create new employees.
         public async Task<IActionResult> Create([FromBody] CreateEmployeeViewModel model)  //Take data from request body.[FromBody] Convert to CreateEmployeeViewModel model and validate it. If the model is valid, create a new EmployeeEntity using the data from the model and use the _service to create a new employee. If the creation is successful, return the created employee in the response with an HTTP 201 Created status code.
         {
+            var existingEmployee = await _service.GetByEmail(model.Email);
+            if (existingEmployee is not null)
+            {
+                return ErrorResponse(StatusCodes.Status400BadRequest, "Employee with this email already exists.");
+            }
             var employee = new EmployeeEntity //create employee entity using the data from the model. The EmployeeEntity class represents the employee data that will be stored in the database. It has properties for Name, Email, Salary, and DepartmentId, which are populated with the corresponding values from the CreateEmployeeViewModel.
             {
                 Name = model.Name,
@@ -63,7 +72,7 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
             var createdEmployee = await _service.Create(employee);  //call service and Employee gets inserted into database.
             await _employeeEmailSender.SendAccountCreatedAsync(createdEmployee, model.Password);
 
-            return CreatedAtAction(nameof(GetById), new { id = createdEmployee.Id }, createdEmployee); //201 Created
+            return CreatedResponse("Employee created successfully.", createdEmployee); //201 Created
         }
         
         [HttpPut("{id:int}")] //PUT /api/employee/1 This method will handle HTTP PUT requests to the URL api/employee/{id}, where {id} is an integer representing the employee's ID. It will update the existing employee with the specified ID using the data provided in the request body. It uses the UpdateEmployeeViewModel to receive and validate the data from the client, and then it uses the _service to update the employee. If the employee with the specified ID does not exist, it returns an HTTP 404 Not Found status code. If the update is successful, it returns the updated employee in the response with an HTTP 200 OK status code.
@@ -73,7 +82,7 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
             var existingEmployee = await _service.GetById(id);
             if (existingEmployee is null)
             {
-                return NotFound();
+                return NotFoundResponse("Employee not found.");
             }
 
             var employee = new EmployeeEntity //Create Updated Entity using the data from the model. The EmployeeEntity class represents the employee data that will be stored in the database. It has properties for Id, Name, Email, Salary, and DepartmentId, which are populated with the corresponding values from the UpdateEmployeeViewModel and the id parameter.
@@ -90,14 +99,20 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
                 Status = model.Status
             };
 
-            return Ok(await _service.Update(employee)); // Calls service.
+            var updatedEmployee = await _service.Update(employee);
+            return SuccessResponse("Employee updated successfully.", updatedEmployee); // Calls service.
+            
         }
 
         [HttpDelete("{id:int}")]  //DELETE /api/employee/1 
         [Authorize(Roles = "Manager")] 
         public async Task<IActionResult> Delete(int id) // receive 1
         {
-            return await _service.Delete(id) ? NoContent() : NotFound(); // like if else if the employee with the specified ID was successfully deleted, it returns an HTTP 204 No Content status code. If the employee with the specified ID was not found, it returns an HTTP 404 Not Found status code.
+            var deleted = await _service.Delete(id);
+
+            return deleted
+                ? SuccessResponse("Employee deleted successfully.")
+                : NotFoundResponse("Employee not found."); // 
         }
     }
 }

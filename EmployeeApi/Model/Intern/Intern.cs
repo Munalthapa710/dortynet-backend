@@ -1,4 +1,4 @@
-﻿using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+﻿ using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
 
 namespace EmployeeApi.Model.Intern
     
