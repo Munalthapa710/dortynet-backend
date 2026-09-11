@@ -1,4 +1,5 @@
-﻿using InternEntity = EmployeeApi.Model.Intern.Intern;
+﻿using EmployeeApi.ViewModel.Intern;
+using InternEntity = EmployeeApi.Model.Intern.Intern;
 
 namespace EmployeeApi.Service.Intern
 {
@@ -13,5 +14,7 @@ namespace EmployeeApi.Service.Intern
         Task<InternEntity> Update(int id, InternEntity intern);
 
         Task<bool> Delete(int id);
+
+        Task<IEnumerable<InternDropdownViewModel>> GetDropdown(string query);
     }
 }

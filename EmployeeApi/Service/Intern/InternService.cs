@@ -1,4 +1,5 @@
 using Dapper;
+using EmployeeApi.ViewModel.Intern;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using InternEntity = EmployeeApi.Model.Intern.Intern;
@@ -75,6 +76,20 @@ namespace EmployeeApi.Service.Intern
                 commandType: CommandType.StoredProcedure
             );
             return deleted > 0;
+        }
+
+        public async Task<IEnumerable<InternDropdownViewModel>> GetDropdown(string query)
+        {
+            using var connection = new SqlConnection(_connString);
+
+            return await connection.QueryAsync<InternDropdownViewModel>(
+                "[dbo].[GetInternDropdown]",
+                new
+                {
+                    Query = query ?? string.Empty
+                },
+                commandType: CommandType.StoredProcedure
+            );
         }
     }
 }

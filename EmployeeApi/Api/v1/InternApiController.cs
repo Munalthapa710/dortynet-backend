@@ -76,5 +76,11 @@ namespace EmployeeApi.Api.v1
                 ? NoContent()
                 : NotFound();
         }
+
+        [HttpGet("dropdown")]
+        public async Task<IActionResult> GetDropdown([FromQuery] string query = "")
+        {
+            return Ok(await _service.GetDropdown(query));
+        }
     }
 }
