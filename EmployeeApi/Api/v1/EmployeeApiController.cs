@@ -23,9 +23,11 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
 
         [HttpGet] // This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
         [Authorize(Roles = "Manager,Employee")] // This attribute specifies that only users with the "Manager" role are authorized to access this endpoint.
-        public async Task<IActionResult> Get() // This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
+        public async Task<IActionResult> Get([FromQuery] int page = 1,
+      [FromQuery] int limit = 10,
+      [FromQuery] string query = "") // This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
         {
-            return Ok(await _service.GetAll()); // Use the _service to get all employees and return them in the response with an HTTP 200 OK status code. The Ok() method creates an ObjectResult that produces a 200 OK response with the specified value (the list of employees) as the content.
+            return Ok(await _service.GetPaged(page,limit,query)); // Use the _service to get all employees and return them in the response with an HTTP 200 OK status code. The Ok() method creates an ObjectResult that produces a 200 OK response with the specified value (the list of employees) as the content.
         }
 
         [HttpGet("{id:int}")]// This method will handle HTTP GET requests to the URL api/employee/{id}, where {id} is an integer representing the employee's ID.

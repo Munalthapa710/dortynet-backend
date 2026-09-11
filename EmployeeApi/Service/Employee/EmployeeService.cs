@@ -5,6 +5,8 @@ using System.Data;
 using EmployeeApi.Data;
 using Microsoft.EntityFrameworkCore;
 using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+using EmployeeApi.ViewModel.Common;
+using EmployeeApi.ViewModel.Employee;
 
 namespace EmployeeApi.Service.Employee
 {
@@ -155,6 +157,32 @@ namespace EmployeeApi.Service.Employee
                 commandType: CommandType.StoredProcedure);
 
             return affectedRows > 0;
+        }
+
+      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query)
+        {
+            using var connection = new SqlConnection(_connString);
+
+            var rows = await connection.QueryAsync<EmployeeListViewModel>(
+                "[dbo].[GetEmployeesPaged]",
+                new
+                {
+                    Page = page,
+                    Limit = limit,
+                    Query = query ?? string.Empty
+                },
+                commandType: CommandType.StoredProcedure
+            );
+
+            var list = rows.ToList();
+
+            return new PagedResult<EmployeeListViewModel>
+            {
+                Items = list,
+                RowTotal = list.FirstOrDefault()?.RowTotal ?? 0,
+                Page = page,
+                Limit = limit
+            };
         }
     }
 }
