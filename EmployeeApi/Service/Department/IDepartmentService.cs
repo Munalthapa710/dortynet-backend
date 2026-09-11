@@ -1,4 +1,5 @@
-﻿using DepartmentEntity = EmployeeApi.Model.Department.Department;
+﻿using EmployeeApi.ViewModel.Department;
+using DepartmentEntity = EmployeeApi.Model.Department.Department;
 
 namespace EmployeeApi.Service.Department
 {
@@ -11,6 +12,7 @@ namespace EmployeeApi.Service.Department
         Task<DepartmentEntity> Create(DepartmentEntity department);
 
         Task<DepartmentEntity> Update(DepartmentEntity department);
+        Task<IEnumerable<DepartmentDropdownViewModel>> GetDropdown(string query);
 
         Task<bool> Delete(int id);
     }

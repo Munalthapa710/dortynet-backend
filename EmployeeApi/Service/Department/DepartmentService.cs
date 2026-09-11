@@ -1,4 +1,5 @@
 ﻿using EmployeeApi.Data;
+using EmployeeApi.ViewModel.Department;
 using Microsoft.EntityFrameworkCore;
 using DepartmentEntity = EmployeeApi.Model.Department.Department;
 
@@ -63,6 +64,22 @@ namespace EmployeeApi.Service.Department
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<IEnumerable<DepartmentDropdownViewModel>> GetDropdown(string query)
+        {
+            query ??= string.Empty;
+
+            return await _context.Departments
+                .Where(d => query == "" || d.Name.Contains(query))
+                .OrderBy(d => d.Name)
+                .Select(d => new DepartmentDropdownViewModel
+                {
+                    Id = d.Id,
+                    Name = d.Name
+                })
+                .Take(20)
+                .ToListAsync();
         }
     }
 }

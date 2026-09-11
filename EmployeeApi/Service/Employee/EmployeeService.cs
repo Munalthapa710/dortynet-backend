@@ -159,7 +159,7 @@ namespace EmployeeApi.Service.Employee
             return affectedRows > 0;
         }
 
-      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query)
+      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query ,string departmentId)
         {
             using var connection = new SqlConnection(_connString);
 
@@ -169,7 +169,8 @@ namespace EmployeeApi.Service.Employee
                 {
                     Page = page,
                     Limit = limit,
-                    Query = query ?? string.Empty
+                    Query = query ?? string.Empty,
+                    DepartmentId = departmentId ?? string.Empty
                 },
                 commandType: CommandType.StoredProcedure
             );
