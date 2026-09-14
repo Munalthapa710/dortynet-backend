@@ -9,7 +9,7 @@ namespace EmployeeApi.Api.v1
     [ApiController]
     [Authorize(Roles = "Manager,Employee")]
     [Route("api/department")]
-    public class DepartmentApiController : ControllerBase
+    public class DepartmentApiController : BaseApiController
     {
         private readonly IDepartmentService _service;
 

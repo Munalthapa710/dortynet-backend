@@ -1,11 +1,8 @@
 ﻿using Dapper;
 using EmployeeApi.Data;
-using EmployeeApi.Model.Employee;
 using EmployeeApi.ViewModel.Department;
 using Microsoft.Data.SqlClient;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Validation;
 using System.Data;
 using DepartmentEntity = EmployeeApi.Model.Department.Department;
 namespace EmployeeApi.Service.Department
@@ -65,7 +62,7 @@ namespace EmployeeApi.Service.Department
 
         public async Task<DepartmentEntity> Update(DepartmentEntity department)
         {
-            using var connection = new SqlConnection();
+            using var connection = new SqlConnection(_connstring);
             var updatedepartment = await connection.QuerySingleAsync<DepartmentEntity>(
                 "[dbo].[UpdateDepartment]",
                 new
@@ -93,18 +90,16 @@ namespace EmployeeApi.Service.Department
 
         public async Task<IEnumerable<DepartmentDropdownViewModel>> GetDropdown(string query)
         {
-            query ??= string.Empty;
+            using var connection = new SqlConnection(_connstring);
 
-            return await _context.Departments
-                .Where(d => query == "" || d.Name.Contains(query))
-                .OrderBy(d => d.Name)
-                .Select(d => new DepartmentDropdownViewModel
+            return await connection.QueryAsync<DepartmentDropdownViewModel>(
+                "[dbo].[GetDepartmentDropdown]",
+                new
                 {
-                    Id = d.Id,
-                    Name = d.Name
-                })
-                .Take(20)
-                .ToListAsync();
+                    Query = query ?? string.Empty
+                },
+                commandType: CommandType.StoredProcedure
+            );
         }
     }
 }
