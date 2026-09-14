@@ -9,7 +9,7 @@ namespace EmployeeApi.Api.v1;
 [ApiController]
 [Route("api/assign-task")] // base url for all endpoints in this controller, so all endpoints will start with api/assign-task
 [Authorize(Roles = "Manager")]
-public class AssignTaskApiController : ControllerBase
+public class AssignTaskApiController : BaseApiController
 {
     private readonly IAssignTaskService _service;
 
@@ -21,20 +21,22 @@ public class AssignTaskApiController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        return Ok(await _service.GetAll());
+        //return Ok(await _service.GetAll());
+        var assignedTasks = await _service.GetAll();
+        return SuccessResponse("Assigned task list loaded successfully", assignedTasks);
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var assignedTask = await _service.GetById(id);
-        return assignedTask is null ? NotFound() : Ok(assignedTask);
+        return assignedTask is null ? NotFoundResponse("Assigned task not found") : SuccessResponse("Assigned task loaded successfully", assignedTask);
     }
 
     [HttpGet("employee/{employeeId:int}")]
     public async Task<IActionResult> GetByEmployeeId(int employeeId)
     {
-        return Ok(await _service.GetByEmployeeId(employeeId));
+        return SuccessResponse("Assigned tasks for employee loaded successfully", await _service.GetByEmployeeId(employeeId));
     }
 
     [HttpPost]
@@ -44,11 +46,11 @@ public class AssignTaskApiController : ControllerBase
         {
             var assignedTask = Map(model);
             var createdTask = await _service.Create(assignedTask);
-            return CreatedAtAction(nameof(GetById), new { id = createdTask.Id }, createdTask);
+            return CreatedResponse("Assigned task created successfully", createdTask);
         }
         catch (KeyNotFoundException exception)
         {
-            return NotFound(exception.Message);
+            return NotFoundResponse(exception.Message);
         }
     }
 
@@ -59,18 +61,18 @@ public class AssignTaskApiController : ControllerBase
         {
             var assignedTask = Map(model);
             assignedTask.Id = id;
-            return Ok(await _service.Update(assignedTask));
+            return SuccessResponse("Assigned task updated successfully", await _service.Update(assignedTask));
         }
         catch (KeyNotFoundException exception)
         {
-            return NotFound(exception.Message);
+            return NotFoundResponse(exception.Message);
         }
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        return await _service.Delete(id) ? NoContent() : NotFound();
+        return await _service.Delete(id) ? NoContent() : NotFoundResponse("Assigned task not found");
     }
 
     private static AssignedTaskEntity Map(CreateAssignTaskViewModel model)

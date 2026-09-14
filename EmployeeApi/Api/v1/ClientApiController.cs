@@ -10,7 +10,7 @@ namespace EmployeeApi.Api.v1
    
     [Route("api/client")]
     [Authorize(Roles = "Manager,Employee")]
-    public class ClientApiController : ControllerBase
+    public class ClientApiController : BaseApiController
     {
        private readonly IClientService _service;
         public ClientApiController(IClientService clientService)
@@ -20,14 +20,16 @@ namespace EmployeeApi.Api.v1
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            return Ok(await _service.GetAll());
+            //return Ok(await _service.GetAll());
+            var clients = await _service.GetAll();
+            return SuccessResponse("Client list loaded successfully", clients);
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var client = await _service.GetById(id);
-            return client is null ? NotFound() : Ok(client);
+            return client is null ? NotFoundResponse("Client not found") : SuccessResponse("Client loaded successfully", client);
         }
 
         [HttpPost]
@@ -40,7 +42,7 @@ namespace EmployeeApi.Api.v1
                 ProjectName = model.ProjectName,
             };
             var createdClient = await _service.Create(client);
-            return CreatedAtAction(nameof(GetById), new { id = createdClient.Id }, createdClient);
+            return CreatedResponse("Client created successfully", createdClient);
         }
 
         [HttpPut("{id:int}")]
@@ -48,7 +50,7 @@ namespace EmployeeApi.Api.v1
         {
             if (await _service.GetById(id) is null)
             {
-                return NotFound();
+                return NotFoundResponse("Client not found");
             }
             var client = new ClientEntity
             {
@@ -58,14 +60,14 @@ namespace EmployeeApi.Api.v1
                 ProjectName = model.ProjectName,
             };
             var updatedClient = await _service.Update(id, client);
-            return Ok(updatedClient);
+            return SuccessResponse("Client updated successfully", updatedClient);
         }
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             if (await _service.GetById(id) is null)
             {
-                return NotFound();
+                return NotFoundResponse("Client not found");
             }
             await _service.Delete(id);
             return NoContent();

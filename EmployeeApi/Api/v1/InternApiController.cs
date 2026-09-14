@@ -9,7 +9,7 @@ namespace EmployeeApi.Api.v1
     [ApiController]
     [Authorize(Roles = "Manager,Employee")]
     [Route("api/intern")]
-    public class InternApiController : ControllerBase
+    public class InternApiController : BaseApiController
     {
         private readonly IInternService _service;
 
@@ -21,7 +21,8 @@ namespace EmployeeApi.Api.v1
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            return Ok(await _service.GetAll());
+            var interns = await _service.GetAll();
+            return SuccessResponse("Intern list loaded successfully", interns);
         }
 
         [HttpGet("{id:int}")]
@@ -30,8 +31,8 @@ namespace EmployeeApi.Api.v1
             var intern = await _service.GetById(id);
 
             return intern is null
-                ? NotFound()
-                : Ok(intern);
+                ? NotFoundResponse("Intern not found")
+                : SuccessResponse("Intern loaded successfully", intern);
         }
 
         [HttpPost]
@@ -45,10 +46,11 @@ namespace EmployeeApi.Api.v1
 
             var createdIntern = await _service.Create(intern);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = createdIntern.Id },
-                createdIntern);
+            //return CreatedAtAction(
+            //    nameof(GetById),
+            //    new { id = createdIntern.Id },
+            //    createdIntern);
+            return CreatedResponse("Intern created successfully", createdIntern);
         }
 
         [HttpPut("{id:int}")]
@@ -56,7 +58,7 @@ namespace EmployeeApi.Api.v1
         {
             if (await _service.GetById(id) is null)
             {
-                return NotFound();
+                return NotFoundResponse("Intern not found");
             }
 
             var intern = new InternEntity
@@ -66,21 +68,22 @@ namespace EmployeeApi.Api.v1
                 Description = model.Description
             };
 
-            return Ok(await _service.Update(id, intern));
+            return SuccessResponse("Intern updated successfully", await _service.Update(id, intern));
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             return await _service.Delete(id)
-                ? NoContent()
-                : NotFound();
+                ? NotFoundResponse("Intern deleted successfully")
+                : NotFoundResponse("Intern not found");
         }
 
         [HttpGet("dropdown")]
         public async Task<IActionResult> GetDropdown([FromQuery] string query = "")
         {
-            return Ok(await _service.GetDropdown(query));
+            var interns = await _service.GetDropdown(query);
+            return SuccessResponse("Intern dropdown loaded successfully.", interns);
         }
     }
 }

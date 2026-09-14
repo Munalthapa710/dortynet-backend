@@ -22,7 +22,9 @@ namespace EmployeeApi.Api.v1
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            return Ok(await _service.GetAll());
+            //return Ok(await _service.GetAll());
+            var departments = await _service.GetAll();
+            return SuccessResponse("Department list loaded successfully", departments);
         }
 
         [HttpGet("{id:int}")]
@@ -32,8 +34,8 @@ namespace EmployeeApi.Api.v1
                 await _service.GetById(id);
 
             return department is null
-                ? NotFound()
-                : Ok(department);
+                ? NotFoundResponse("Department not found")
+                : SuccessResponse("Department loaded successfully", department);
         }
 
         [HttpPost]
@@ -49,10 +51,11 @@ namespace EmployeeApi.Api.v1
             var createdDepartment =
                 await _service.Create(department);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = createdDepartment.Id },
-                createdDepartment);
+            //return CreatedAtAction(
+            //    nameof(GetById),
+            //    new { id = createdDepartment.Id },
+            //    createdDepartment);
+            return CreatedResponse("Department created successfully", createdDepartment);
         }
 
         [HttpPut("{id:int}")]
@@ -62,7 +65,7 @@ namespace EmployeeApi.Api.v1
         {
             if (await _service.GetById(id) is null)
             {
-                return NotFound();
+                return NotFoundResponse("Department not found");
             }
 
             var department = new DepartmentEntity
@@ -80,14 +83,15 @@ namespace EmployeeApi.Api.v1
         public async Task<IActionResult> Delete(int id)
         {
             return await _service.Delete(id)
-                ? NoContent()
-                : NotFound();
+                ? NotFoundResponse("Department deleted successfully")
+                : NotFoundResponse("Department not found");
         }
 
         [HttpGet("dropdown")]
         public async Task<IActionResult> GetDropdown([FromQuery] string query = "")
         {
-            return Ok(await _service.GetDropdown(query));
+            var departments = await _service.GetDropdown(query);
+            return SuccessResponse("Department dropdown loaded successfully.", departments);
         }
     }
 }
