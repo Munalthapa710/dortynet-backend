@@ -4,6 +4,7 @@ using EmployeeApi.Service.Client;
 using EmployeeApi.Service.Department;
 using EmployeeApi.Service.Employee;
 using EmployeeApi.Service.Intern;
+using EmployeeApi.Logging;
 using EmployeeApi.Service.Notifications;
 
 namespace EmployeeApi;
@@ -20,6 +21,9 @@ public static class EmployeeApiServiceRegistrar
         services.AddScoped<IEmployeeEmailSender, SmtpEmployeeEmailSender>();
         services.AddScoped<IInternService, InternService>();
         services.AddScoped<IBonusService, BonusService>();
+        services.AddSingleton<ILoggerSetting, DefaultLoggerSetting>();
+        services.AddSingleton<IAppLogger, FileAppLogger>();
+        services.AddTransient<LogErrorAttribute>();
         return services;
     }
 }

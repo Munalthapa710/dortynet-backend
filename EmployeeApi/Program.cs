@@ -1,6 +1,7 @@
 using EmployeeApi.Data;
 using EmployeeApi;
 using EmployeeApi.Configuration;
+using EmployeeApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -96,6 +97,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors("ReactPolicy");
+app.UseMiddleware<HeaderLogMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

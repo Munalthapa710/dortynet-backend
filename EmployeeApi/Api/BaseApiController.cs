@@ -1,9 +1,11 @@
+using EmployeeApi.Logging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace EmployeeApi.Api
 {
     [ApiController]
+    [LogError]
     public abstract class BaseApiController : ControllerBase
     {
         protected IActionResult SuccessResponse(string message, object? data = null)
