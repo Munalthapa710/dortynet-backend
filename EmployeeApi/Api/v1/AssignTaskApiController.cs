@@ -72,7 +72,9 @@ public class AssignTaskApiController : BaseApiController
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        return await _service.Delete(id) ? NoContent() : NotFoundResponse("Assigned task not found");
+        return await _service.Delete(id)
+            ? SuccessResponse("Assigned task deleted successfully")
+            : NotFoundResponse("Assigned task not found");
     }
 
     private static AssignedTaskEntity Map(CreateAssignTaskViewModel model)

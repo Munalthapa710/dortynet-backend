@@ -18,6 +18,8 @@ public class UpdateEmployeeViewModel
     [Phone]
     public string? PhoneNumber { get; set; }
 
+    public string? ProfileImageBase64 { get; set; }
+
     [StringLength(100, MinimumLength = 6)]
     public string? Password { get; set; }
 

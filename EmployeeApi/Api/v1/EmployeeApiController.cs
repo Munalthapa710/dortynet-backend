@@ -2,6 +2,7 @@
 using EmployeeApi.Api;
 using Microsoft.AspNetCore.Identity;
 using EmployeeApi.Service.Employee; // taking service to use it in the controller to perform operations on employee data
+using EmployeeApi.Service.Files;
 using EmployeeApi.Service.Notifications;
 using EmployeeApi.ViewModel.Employee; // taking viewmodel to use it in the controller to receive data from the client when creating or updating an employee, and to validate the data before processing it in the service layer
 using Microsoft.AspNetCore.Mvc; // Imports ASP.NET Core MVC features. ControllerBase ApiController Route HttpGet HttpPostOk() NotFound()
@@ -15,11 +16,16 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
     {
         private readonly IEmployeeService _service; // declare a private readonly field to hold the instance of the IEmployeeService, which will be used to perform operations on employee data
         private readonly IEmployeeEmailSender _employeeEmailSender;
+        private readonly IFileStorageService _fileStorageService;
 
-        public EmployeeApiController(IEmployeeService service, IEmployeeEmailSender employeeEmailSender) // constructor that takes an IEmployeeService parameter and initializes the _service field with it, allowing the controller to use the service to perform operations on employee data
+        public EmployeeApiController(
+            IEmployeeService service,
+            IEmployeeEmailSender employeeEmailSender,
+            IFileStorageService fileStorageService) // constructor that takes an IEmployeeService parameter and initializes the _service field with it, allowing the controller to use the service to perform operations on employee data
         {
             _service = service; // initialize the _service field with the instance of the IEmployeeService provided through dependency injection, allowing the controller to use the service to perform operations on employee data
             _employeeEmailSender = employeeEmailSender;
+            _fileStorageService = fileStorageService;
         }
 
         [HttpGet] // This method will handle HTTP GET requests to the base URL (api/employee) and will return a list of all employees. It uses the _service to get all employees and returns them in the response with an HTTP 200 OK status code.
@@ -53,11 +59,16 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
             {
                 return ErrorResponse(StatusCodes.Status400BadRequest, "Employee with this email already exists.");
             }
+            var profileImagePath = await _fileStorageService.SaveBase64FileAsync(
+                model.ProfileImageBase64,
+                "employees");
+
             var employee = new EmployeeEntity //create employee entity using the data from the model. The EmployeeEntity class represents the employee data that will be stored in the database. It has properties for Name, Email, Salary, and DepartmentId, which are populated with the corresponding values from the CreateEmployeeViewModel.
             {
                 Name = model.Name,
                 Email = model.Email,
-                PhoneNumber = model.PhoneNumber,
+                PhoneNumber = model.PhoneNumber ?? string.Empty,
+                ProfileImagePath = profileImagePath,
                 Salary = model.Salary,
                 ClientId = model.ClientId,
                 DepartmentId = model.DepartmentId,
@@ -85,12 +96,17 @@ namespace EmployeeApi.Api.v1  {// Groups API controllers together.
                 return NotFoundResponse("Employee not found.");
             }
 
+            var profileImagePath = await _fileStorageService.SaveBase64FileAsync(
+                model.ProfileImageBase64,
+                "employees");
+
             var employee = new EmployeeEntity //Create Updated Entity using the data from the model. The EmployeeEntity class represents the employee data that will be stored in the database. It has properties for Id, Name, Email, Salary, and DepartmentId, which are populated with the corresponding values from the UpdateEmployeeViewModel and the id parameter.
             {
                 Id = id,
                 Name = model.Name,
                 Email = model.Email,
-                PhoneNumber = model.PhoneNumber,
+                PhoneNumber = model.PhoneNumber ?? string.Empty,
+                ProfileImagePath = profileImagePath ?? existingEmployee.ProfileImagePath,
                 PasswordHash = existingEmployee.PasswordHash,
                 Role = existingEmployee.Role,
                 Salary = model.Salary,

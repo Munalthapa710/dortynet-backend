@@ -96,6 +96,10 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+
+
+
+app.UseStaticFiles();
 app.UseCors("ReactPolicy");
 app.UseMiddleware<HeaderLogMiddleware>();
 app.UseAuthentication();

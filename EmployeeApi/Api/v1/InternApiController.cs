@@ -75,7 +75,7 @@ namespace EmployeeApi.Api.v1
         public async Task<IActionResult> Delete(int id)
         {
             return await _service.Delete(id)
-                ? NotFoundResponse("Intern deleted successfully")
+                ? SuccessResponse("Intern deleted successfully")
                 : NotFoundResponse("Intern not found");
         }
 

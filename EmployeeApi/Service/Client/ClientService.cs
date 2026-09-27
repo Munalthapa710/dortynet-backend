@@ -13,12 +13,14 @@ namespace EmployeeApi.Service.Client
 
         public async Task<List<ClientEntity>> GetAll()
         {
-            return await _context.Clients.ToListAsync();
+            return await _context.Clients
+                .OrderBy(c => c.ClientName)
+                .ToListAsync();
         }
 
         public async Task<ClientEntity?> GetById(int id)
         {
-            return await _context.Clients.FindAsync(id);
+            return await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<ClientEntity> Create(ClientEntity client)
@@ -45,7 +47,9 @@ namespace EmployeeApi.Service.Client
             if (client == null)
                 return false;
 
-            _context.Clients.Remove(client);
+            client.IsDeleted = true;
+            client.IsActive = false;
+            client.DeletedOn = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

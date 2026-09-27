@@ -1,5 +1,6 @@
 using EmployeeApi.Model.AssignTask;
 using EmployeeApi.Model.Client;
+using EmployeeApi.Model.Common;
 using EmployeeApi.Model.Department;
 using EmployeeApi.Model.Employee;
 using EmployeeApi.Model.Intern;
@@ -26,6 +27,12 @@ namespace EmployeeApi.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {  // to configure database rules and relationships between entities using fluent API 
+            modelBuilder.Entity<Employee>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<AssignedTask>().HasQueryFilter(t => !t.IsDeleted);
+            modelBuilder.Entity<Department>().HasQueryFilter(d => !d.IsDeleted);
+            modelBuilder.Entity<Client>().HasQueryFilter(c => !c.IsDeleted);
+            modelBuilder.Entity<Intern>().HasQueryFilter(i => !i.IsDeleted);
+
             modelBuilder.Entity<Employee>() // use fluent API to configure the Salary property with precision and scale
                 .Property(e => e.Salary) // configure the Salary property of the Employee entity
                 .HasPrecision(18, 2); // set the precision to 18 and scale to 2
@@ -41,6 +48,32 @@ namespace EmployeeApi.Data
 
 
             base.OnModelCreating(modelBuilder);
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyAuditValues();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplyAuditValues()
+        {
+            var utcNow = DateTime.UtcNow;
+
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Entity.AddedOn = utcNow;
+                    entry.Entity.IsActive = true;
+                    entry.Entity.IsDeleted = false;
+                }
+
+                if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.ModifiedOn = utcNow;
+                }
+            }
         }
     }
 }

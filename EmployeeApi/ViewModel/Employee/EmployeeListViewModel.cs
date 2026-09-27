@@ -10,6 +10,8 @@
 
         public string? PhoneNumber { get; set; }
 
+        public string? ProfileImagePath { get; set; }
+
         public decimal Salary { get; set; }
 
         public int DepartmentId { get; set; }

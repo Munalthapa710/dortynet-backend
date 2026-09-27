@@ -1,191 +1,148 @@
-//how to do
-using Dapper;
-using Microsoft.Data.SqlClient;
-using System.Data;
 using EmployeeApi.Data;
-using Microsoft.EntityFrameworkCore;
-using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
 using EmployeeApi.ViewModel.Common;
 using EmployeeApi.ViewModel.Employee;
+using Microsoft.EntityFrameworkCore;
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
 
 namespace EmployeeApi.Service.Employee
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly ApplicationDbContext _context; //declare a private readonly field to hold the database context for accessing the employee table
+        private readonly ApplicationDbContext _context;
 
-        private readonly string _connString;
-        public EmployeeService(ApplicationDbContext context, IConfiguration configuration) //constructor that takes an ApplicationDbContext parameter and initializes the _context field with it (constructor dependency injection)
+        public EmployeeService(ApplicationDbContext context)
         {
-            _context = context; //give to context the database context to access the database and perform operations on the employee table this is for entity framework core 
-            _connString = configuration.GetConnectionString("DefaultConnection") ?? //connection string is used to connect to the database, it is retrieved from the configuration file (appsettings.json) using the GetConnectionString method, if the connection string is not found, an InvalidOperationException is thrown with a message indicating that the connection string was not found
-                throw new InvalidOperationException("Connection string not found."); // this is for dapper to connect to the database and perform operations on the employee table
+            _context = context;
         }
 
-        public async Task<EmployeeEntity?> GetByEmail(string email) //find one employee by email, if not found return null and if found return the employee with the related department data
+        public async Task<EmployeeEntity?> GetByEmail(string email)
         {
-            using var connection = new SqlConnection(_connString); //create a new SqlConnection object using the connection string from the configuration
-            return await connection.QueryFirstOrDefaultAsync<EmployeeEntity>( //dapper method that executes a stored procedure to retrieve the employee with the specified email address, and returns the first result or null if no results are found
-               "[dbo].[GetEmployeeByEmail]",
-               new
-               {
-                   Email= email // initialize the Email parameter of the stored procedure with the email parameter of the method
-               },
-               commandType: CommandType.StoredProcedure); //commandType specifies that the command being executed is a stored procedure
+            return await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Client)
+                .FirstOrDefaultAsync(e => e.Email == email);
         }
 
-        //    public async Task<List<EmployeeEntity>> GetAll()
-        //    {
-        //        return await _context.Employees //access employee table from the database and include the related department data for each employee , _context.Employees return like select * from Employees, and Include(e => e.Department) is like a join with the Department table to get the department data for each employee
-        //.Include(e => e.Department) //include the related department data for each employee
-        //.ToListAsync(); //convert query result to a list and return it as a Task<List<EmployeeEntity>>
-        //    }
-
-
-        public async Task<List<EmployeeEntity>> GetAll() // retrieve all employees from the database and return them as a list of EmployeeEntity objects
+        public async Task<List<EmployeeEntity>> GetAll()
         {
-            using var connection = new SqlConnection(_connString); // create a new SqlConnection object using the connection string from the configuration
-
-            var employees = await connection.QueryAsync<EmployeeEntity>( // dapper method that executes a stored procedure to retrieve all employees from the database and returns the result as an IEnumerable<EmployeeEntity>
-                "[dbo].[GetAllEmployees]",
-                commandType: CommandType.StoredProcedure); //execute the stored procedure to retrieve all employees from the database and return the result as a list of EmployeeEntity objects
-
-            return employees.ToList(); //convert the result to a list and return it
+            return await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Client)
+                .OrderBy(e => e.Name)
+                .ToListAsync();
         }
 
-        //   public async Task<EmployeeEntity?> GetById(int id) //find one employeeby id, if not found return null and if found return the employee with the related department data
-        //   {
-        //       return await _context.Employees //access employee table from the database
-        //.Include(e => e.Department) //include the related department data for the employee
-        //.FirstOrDefaultAsync(e => e.Id == id); //break it down e one employee in a row e.Id emp id comapre to method parameter ID ( find the employee with the specified id and return it as a Task<EmployeeEntity?>, if not found return null )
-        //   }
-
-        public async Task<EmployeeEntity?> GetById(int id) // retrieve an employee by their ID from the database and return it as an EmployeeEntity object, or null if not found
+        public async Task<EmployeeEntity?> GetById(int id)
         {
-            using var connection = new SqlConnection(_connString); // create a new SqlConnection object using the connection string from the configuration
-
-            return await connection.QueryFirstOrDefaultAsync<EmployeeEntity>( // dapper method that executes a stored procedure to retrieve the employee with the specified ID from the database and returns the first result or null if no results are found
-                "[dbo].[GetEmployeeById]", // execute the stored procedure to retrieve the employee with the specified ID from the database
-                new { Id = id }, // initialize the Id parameter of the stored procedure with the id parameter of the method
-                commandType: CommandType.StoredProcedure); // specify that the command being executed is a stored procedure
+            return await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Client)
+                .FirstOrDefaultAsync(e => e.Id == id);
         }
 
-
-        //public async Task<EmployeeEntity> Create(EmployeeEntity employee) //create a new employee in the database and return the created employee with the related department data
-        //{
-        //    _context.Employees.Add(employee); //add the new employee to the employee table in the database
-        //    await _context.SaveChangesAsync(); //save the changes to the database and return the created employee with the related department data ( insert into like this )
-        //    return employee; // return the created employee
-        //}
         public async Task<EmployeeEntity> Create(EmployeeEntity employee)
         {
-            using var connection = new SqlConnection(_connString);
-
-            var createdEmployee = await connection.QuerySingleAsync<EmployeeEntity>(
-                "[dbo].[CreateEmployee]",
-                new
-                {
-                    employee.Name,
-                    employee.Email,
-                    employee.PhoneNumber,
-                    employee.PasswordHash,
-                    employee.Role,
-                    employee.Salary,
-                    employee.DepartmentId,
-                    employee.ClientId,
-                    employee.Status
-
-                },
-                commandType: CommandType.StoredProcedure);
-
-            return createdEmployee;
+            _context.Employees.Add(employee);
+            await _context.SaveChangesAsync();
+            return employee;
         }
-
-
-        //public async Task<EmployeeEntity> Update(EmployeeEntity employee)  // update an existing employee in the database and return the updated employee
-        //{
-        //    var existingEmployee = await _context.Employees.FindAsync(employee.Id) // find the existing employee in the database by id, if not found return null
-        //        ?? throw new KeyNotFoundException($"Employee {employee.Id} was not found."); // if not found throw a KeyNotFoundException with a message indicating that the employee was not found
-
-        //    _context.Entry(existingEmployee).CurrentValues.SetValues(employee); // update the existing employee with the new values from the employee parameter
-        //    await _context.SaveChangesAsync(); // save the changes to the database and return the updated employee (update tablename like that in here )
-        //    return existingEmployee; // return the updated employee 
-        //}
 
         public async Task<EmployeeEntity> Update(EmployeeEntity employee)
         {
-            using var connection = new SqlConnection(_connString);
-
-            var updatedEmployee = await connection.QueryFirstOrDefaultAsync<EmployeeEntity>(
-                "[dbo].[UpdateEmployee]",
-                new
-                {
-                    employee.Id,
-                    employee.Name,
-                    employee.Email,
-                    employee.PhoneNumber,
-                    employee.PasswordHash,
-                    employee.Role,
-                    employee.Salary,
-                    employee.DepartmentId,
-                    employee.ClientId,
-                    employee.Status
-                },
-                commandType: CommandType.StoredProcedure);
-
-            return updatedEmployee
+            var existingEmployee = await _context.Employees.FirstOrDefaultAsync(e => e.Id == employee.Id)
                 ?? throw new KeyNotFoundException($"Employee {employee.Id} was not found.");
+
+            existingEmployee.Name = employee.Name;
+            existingEmployee.Email = employee.Email;
+            existingEmployee.PhoneNumber = employee.PhoneNumber;
+            existingEmployee.ProfileImagePath = employee.ProfileImagePath;
+            existingEmployee.PasswordHash = employee.PasswordHash;
+            existingEmployee.Role = employee.Role;
+            existingEmployee.Salary = employee.Salary;
+            existingEmployee.DepartmentId = employee.DepartmentId;
+            existingEmployee.ClientId = employee.ClientId;
+            existingEmployee.Status = employee.Status;
+
+            await _context.SaveChangesAsync();
+            return existingEmployee;
         }
 
-        //public async Task<bool> Delete(int id) // delete an existing employee from the database by id and return true if the employee was deleted, false if the employee was not found
-        //{
-        //    var employee = await _context.Employees.FindAsync(id); // find the existing employee in the database by id, if not found return null
-
-        //    if (employee is null) // if the employee was not found, return false
-        //    {
-        //        return false;
-        //    }
-
-        //    _context.Employees.Remove(employee); // remove the existing employee from the employee table in the database
-        //    await _context.SaveChangesAsync(); // save the changes to the database and return true if the employee was deleted
-        //    return true; // return true if the employee was deleted
-        //}
         public async Task<bool> Delete(int id)
         {
-            using var connection = new SqlConnection(_connString);
+            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Id == id);
+            if (employee is null)
+            {
+                return false;
+            }
 
-            var affectedRows = await connection.ExecuteScalarAsync<int>(
-                "[dbo].[DeleteEmployee]",
-                new { Id = id },
-                commandType: CommandType.StoredProcedure);
-
-            return affectedRows > 0;
+            employee.IsDeleted = true;
+            employee.IsActive = false;
+            employee.DeletedOn = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-      public async Task<PagedResult<EmployeeListViewModel>> GetPaged(int page, int limit, string query, int? departmentId, string status)
+        public async Task<PagedResult<EmployeeListViewModel>> GetPaged(
+            int page,
+            int limit,
+            string query,
+            int? departmentId,
+            string status)
         {
-            using var connection = new SqlConnection(_connString);
+            page = page <= 0 ? 1 : page;
+            limit = limit <= 0 ? 10 : limit;
 
-            var rows = await connection.QueryAsync<EmployeeListViewModel>(
-                "[dbo].[GetEmployeesPaged]",
-                new
+            var employees = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Client)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var searchText = query.Trim();
+                employees = employees.Where(e =>
+                    e.Name.Contains(searchText) ||
+                    e.Email.Contains(searchText) ||
+                    e.PhoneNumber.Contains(searchText));
+            }
+
+            if (departmentId.HasValue)
+            {
+                employees = employees.Where(e => e.DepartmentId == departmentId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                employees = employees.Where(e => e.Status == status);
+            }
+
+            var rowTotal = await employees.CountAsync();
+            var items = await employees
+                .OrderBy(e => e.Name)
+                .Skip((page - 1) * limit)
+                .Take(limit)
+                .Select(e => new EmployeeListViewModel
                 {
-                    Page = page,
-                    Limit = limit,
-                    Query = query ?? string.Empty,
-                    DepartmentId = departmentId,
-                    Status = status ?? string.Empty
-
-                },
-                commandType: CommandType.StoredProcedure
-            );
-
-            var list = rows.ToList();
+                    Id = e.Id,
+                    Name = e.Name,
+                    Email = e.Email,
+                    PhoneNumber = e.PhoneNumber,
+                    ProfileImagePath = e.ProfileImagePath,
+                    Salary = e.Salary,
+                    DepartmentId = e.DepartmentId,
+                    DepartmentName = e.Department == null ? null : e.Department.Name,
+                    ClientId = e.ClientId,
+                    ClientName = e.Client == null ? null : e.Client.ClientName,
+                    Role = e.Role,
+                    Status = e.Status,
+                    RowTotal = rowTotal
+                })
+                .ToListAsync();
 
             return new PagedResult<EmployeeListViewModel>
             {
-                Items = list,
-                RowTotal = list.FirstOrDefault()?.RowTotal ?? 0,
+                Items = items,
+                RowTotal = rowTotal,
                 Page = page,
                 Limit = limit
             };

@@ -1,6 +1,8 @@
-﻿namespace EmployeeApi.Model.Client
+using EmployeeApi.Model.Common;
+
+namespace EmployeeApi.Model.Client
 {
-    public class Client
+    public class Client : BaseEntity
     {
         public int Id { get; set; }
 

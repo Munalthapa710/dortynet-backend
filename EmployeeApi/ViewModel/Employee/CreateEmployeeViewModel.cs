@@ -19,6 +19,8 @@ public class CreateEmployeeViewModel
     [Phone]
     public string? PhoneNumber { get; set; }
 
+    public string? ProfileImageBase64 { get; set; }
+
     [Range(0, double.MaxValue)]
     public decimal Salary { get; set; }
 

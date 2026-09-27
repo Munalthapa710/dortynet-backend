@@ -70,7 +70,7 @@ namespace EmployeeApi.Api.v1
                 return NotFoundResponse("Client not found");
             }
             await _service.Delete(id);
-            return NoContent();
+            return SuccessResponse("Client deleted successfully");
         }
     }
 }

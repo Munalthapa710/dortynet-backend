@@ -1,136 +1,107 @@
-using Dapper;
+using EmployeeApi.Data;
 using EmployeeApi.ViewModel.Department;
-using Microsoft.Data.SqlClient;
-using System.Data;
+using Microsoft.EntityFrameworkCore;
 using DepartmentEntity = EmployeeApi.Model.Department.Department;
+
 namespace EmployeeApi.Service.Department
 {
     public class DepartmentService : IDepartmentService
     {
-        private readonly string _connstring;
+        private readonly ApplicationDbContext _context;
 
-        public DepartmentService(IConfiguration configuration)
+        public DepartmentService(ApplicationDbContext context)
         {
-            _connstring = configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+            _context = context;
         }
 
         public async Task<List<DepartmentEntity>> GetAll()
         {
-            using var connection = new SqlConnection(_connstring);
-            var department=await connection.QueryAsync<DepartmentEntity>(
-                "[dbo].[GetAllDepartments]",
-                 commandType: CommandType.StoredProcedure
-                 ); 
-
-            return department.ToList();
+            return await _context.Departments
+                .OrderBy(d => d.Name)
+                .ToListAsync();
         }
 
         public async Task<DepartmentEntity?> GetById(int id)
         {
-            using var connection = new SqlConnection(_connstring);
-            var department = await connection.QueryFirstOrDefaultAsync<DepartmentEntity>(
-                "[dbo].[GetDepartmentById]",
-                new { Id = id },
-                commandType: CommandType.StoredProcedure
-                );
-         return department;
+            return await _context.Departments.FirstOrDefaultAsync(d => d.Id == id);
         }
 
         public async Task<DepartmentEntity> Create(DepartmentEntity department)
         {
-           using var connection = new SqlConnection(_connstring);
-            var createdepartment =await connection.QuerySingleAsync<DepartmentEntity>(
-                "[dbo].[CreateDepartment]",
-                new {
-                    department.Name,
-                    department.Description
-                },
-                commandType: CommandType.StoredProcedure
-                );
-
-            return createdepartment;
+            _context.Departments.Add(department);
+            await _context.SaveChangesAsync();
+            return department;
         }
 
         public async Task<DepartmentEntity> Update(DepartmentEntity department)
         {
-            using var connection = new SqlConnection(_connstring);
-            var updatedepartment = await connection.QuerySingleAsync<DepartmentEntity>(
-                "[dbo].[UpdateDepartment]",
-                new
-                {
-                    department.Id,
-                    department.Name,
-                    department.Description
-                },
-                commandType: CommandType.StoredProcedure
-                );
-            return updatedepartment?? throw new InvalidOperationException($"Department with ID {department.Id} not found.");
+            var existingDepartment = await _context.Departments.FirstOrDefaultAsync(d => d.Id == department.Id)
+                ?? throw new InvalidOperationException($"Department with ID {department.Id} not found.");
+
+            existingDepartment.Name = department.Name;
+            existingDepartment.Description = department.Description;
+            await _context.SaveChangesAsync();
+            return existingDepartment;
         }
 
         public async Task<bool> Delete(int id)
         {
-            using var connection = new SqlConnection(_connstring);
+            var department = await _context.Departments.FirstOrDefaultAsync(d => d.Id == id);
+            if (department is null)
+            {
+                return false;
+            }
 
-            var affectedRows = await connection.ExecuteScalarAsync<int>(
-                "[dbo].[DeleteDepartment]",
-                new { Id = id },
-                commandType: CommandType.StoredProcedure);
-
-            return affectedRows > 0;
+            department.IsDeleted = true;
+            department.IsActive = false;
+            department.DeletedOn = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<IEnumerable<DepartmentDropdownViewModel>> GetDropdown(string query)
         {
-            using var connection = new SqlConnection(_connstring);
+            var departments = _context.Departments.AsQueryable();
 
-            return await connection.QueryAsync<DepartmentDropdownViewModel>(
-                "[dbo].[GetDepartmentDropdown]",
-                new
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                departments = departments.Where(d => d.Name.Contains(query));
+            }
+
+            return await departments
+                .OrderBy(d => d.Name)
+                .Select(d => new DepartmentDropdownViewModel
                 {
-                    Query = query ?? string.Empty
-                },
-                commandType: CommandType.StoredProcedure
-            );
+                    Id = d.Id,
+                    Name = d.Name
+                })
+                .ToListAsync();
         }
-
 
         public async Task<List<DepartmentWithEmployeesViewModel>> GetDepartmentsWithEmployees()
         {
-            using var connection = new SqlConnection(_connstring);
-
-            var rows = await connection.QueryAsync<DepartmentEmployeeFlatViewModel>(
-                "[dbo].[GetDepartmentsWithEmployees]",
-                commandType: CommandType.StoredProcedure
-            );
-
-            var departments = rows
-                .GroupBy(row => new
+            return await _context.Departments
+                .Include(d => d.Employees)
+                .OrderBy(d => d.Name)
+                .Select(d => new DepartmentWithEmployeesViewModel
                 {
-                    row.DepartmentId,
-                    row.DepartmentName,
-                    row.Description
-                })
-                .Select(group => new DepartmentWithEmployeesViewModel
-                {
-                    DepartmentId = group.Key.DepartmentId,
-                    DepartmentName = group.Key.DepartmentName,
-                    Description = group.Key.Description,
-                    Employees = group
-                        .Where(row => row.EmployeeId.HasValue)
-                        .Select(row => new DepartmentEmployeeViewModel
+                    DepartmentId = d.Id,
+                    DepartmentName = d.Name,
+                    Description = d.Description,
+                    Employees = d.Employees
+                        .Where(e => !e.IsDeleted)
+                        .OrderBy(e => e.Name)
+                        .Select(e => new DepartmentEmployeeViewModel
                         {
-                            EmployeeId = row.EmployeeId!.Value,
-                            EmployeeName = row.EmployeeName ?? string.Empty,
-                            Email = row.Email ?? string.Empty,
-                            Role = row.Role ?? string.Empty,
-                            Status = row.Status ?? string.Empty
+                            EmployeeId = e.Id,
+                            EmployeeName = e.Name,
+                            Email = e.Email,
+                            Role = e.Role,
+                            Status = e.Status
                         })
                         .ToList()
                 })
-                .ToList();
-
-            return departments;
+                .ToListAsync();
         }
     }
 }

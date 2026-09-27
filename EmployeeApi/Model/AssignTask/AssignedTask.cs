@@ -1,6 +1,8 @@
+using EmployeeApi.Model.Common;
+
 namespace EmployeeApi.Model.AssignTask;
 
-public class AssignedTask
+public class AssignedTask : BaseEntity
 {
     public int Id { get; set; }
 

@@ -1,9 +1,10 @@
 //database ko model yaha 
+using EmployeeApi.Model.Common;
 using System.Text.Json.Serialization;
 
 namespace EmployeeApi.Model.Employee
 {
-    public class Employee
+    public class Employee : BaseEntity
     {
         public int Id { get; set; } // get to read and set to write 
 
@@ -11,7 +12,9 @@ namespace EmployeeApi.Model.Employee
 
         public string Email { get; set; } = string.Empty;
 
-        public string PhoneNumber { get; set; } = string.Empty; 
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public string? ProfileImagePath { get; set; }
 
         public decimal Salary { get; set; }
 

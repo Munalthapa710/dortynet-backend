@@ -1,9 +1,10 @@
-﻿ using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
+using EmployeeApi.Model.Common;
+using EmployeeEntity = EmployeeApi.Model.Employee.Employee;
 
 namespace EmployeeApi.Model.Intern
     
 {
-    public class Intern
+    public class Intern : BaseEntity
     {
         public int Id { get; set; }
 

@@ -1,95 +1,81 @@
-using Dapper;
+using EmployeeApi.Data;
 using EmployeeApi.ViewModel.Intern;
-using Microsoft.Data.SqlClient;
-using System.Data;
+using Microsoft.EntityFrameworkCore;
 using InternEntity = EmployeeApi.Model.Intern.Intern;
 
 namespace EmployeeApi.Service.Intern
 {
     public class InternService : IInternService
     {
-        private readonly string _connString;
+        private readonly ApplicationDbContext _context;
 
-        public InternService(IConfiguration configuration)
+        public InternService(ApplicationDbContext context)
         {
-            _connString = configuration.GetConnectionString("DefaultConnection") ??
-                throw new InvalidOperationException("Connection string not found.");
+            _context = context;
         }
 
         public async Task<List<InternEntity>> GetAll()
         {
-            using var connection = new SqlConnection(_connString);
-            var interns = await connection.QueryAsync<InternEntity>(
-                "[dbo].[GetAllInterns]",
-                commandType: CommandType.StoredProcedure
-            );
-            return interns.ToList();
+            return await _context.Interns
+                .OrderBy(i => i.Name)
+                .ToListAsync();
         }
 
         public async Task<InternEntity?> GetById(int id)
         {
-            using var connection = new SqlConnection(_connString);
-            return await connection.QueryFirstOrDefaultAsync<InternEntity>(
-                "[dbo].[GetInternById]",
-                new { Id = id },
-                commandType: CommandType.StoredProcedure
-            );
+            return await _context.Interns.FirstOrDefaultAsync(i => i.Id == id);
         }
 
         public async Task<InternEntity> Create(InternEntity intern)
         {
-            using var connection = new SqlConnection(_connString);
-            return await connection.QuerySingleAsync<InternEntity>(
-                "[dbo].[CreateIntern]",
-                new
-                {
-                    intern.Name,
-                    intern.Description
-                },
-                commandType: CommandType.StoredProcedure
-            );
+            _context.Interns.Add(intern);
+            await _context.SaveChangesAsync();
+            return intern;
         }
 
         public async Task<InternEntity> Update(int id, InternEntity intern)
         {
-            using var connection = new SqlConnection(_connString);
-            var updatedIntern = await connection.QuerySingleOrDefaultAsync<InternEntity>(
-                "[dbo].[UpdateIntern]",
-                new
-                {
-                    Id = id,
-                    intern.Name,
-                    intern.Description
-                },
-                commandType: CommandType.StoredProcedure
-            );
+            var existingIntern = await _context.Interns.FirstOrDefaultAsync(i => i.Id == id)
+                ?? throw new KeyNotFoundException($"Intern {id} was not found.");
 
-            return updatedIntern ?? throw new KeyNotFoundException($"Intern {id} was not found.");
+            existingIntern.Name = intern.Name;
+            existingIntern.Description = intern.Description;
+            await _context.SaveChangesAsync();
+            return existingIntern;
         }
 
         public async Task<bool> Delete(int id)
         {
-            using var connection = new SqlConnection(_connString);
-            var deleted = await connection.ExecuteScalarAsync<int>(
-                "[dbo].[DeleteIntern]",
-                new { Id = id },
-                commandType: CommandType.StoredProcedure
-            );
-            return deleted > 0;
+            var intern = await _context.Interns.FirstOrDefaultAsync(i => i.Id == id);
+            if (intern is null)
+            {
+                return false;
+            }
+
+            intern.IsDeleted = true;
+            intern.IsActive = false;
+            intern.DeletedOn = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<IEnumerable<InternDropdownViewModel>> GetDropdown(string query)
         {
-            using var connection = new SqlConnection(_connString);
+            var interns = _context.Interns.AsQueryable();
 
-            return await connection.QueryAsync<InternDropdownViewModel>(
-                "[dbo].[GetInternDropdown]",
-                new
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                interns = interns.Where(i => i.Name.Contains(query));
+            }
+
+            return await interns
+                .OrderBy(i => i.Name)
+                .Select(i => new InternDropdownViewModel
                 {
-                    Query = query ?? string.Empty
-                },
-                commandType: CommandType.StoredProcedure
-            );
+                    Id = i.Id,
+                    Name = i.Name
+                })
+                .ToListAsync();
         }
     }
 }
